@@ -559,12 +559,12 @@ function renderHomePage(archives) {
 <body>
   <main class="shell homeShell">
     ${renderSiteNav("home", latestDate)}
-    <section class="homeArtHero" aria-label="AI HOT 每日归档与复盘工作台">
+    <section class="homeArtHero homeWorkbenchHero" aria-label="AI HOT 每日归档与复盘工作台">
       <div class="heroCopyBlock">
-        <p class="heroKicker">AI HOT 知识入口</p>
+        <p class="heroKicker">AI HOT 情报知识库</p>
         <h1 class="heroHeadline">
-          <span>AI HOT</span>
-          <span>情报台</span>
+          <span>今日情报</span>
+          <span>工作台</span>
         </h1>
         <p class="heroLead">${escapeHtml(heroLeadText)}</p>
         <div class="heroActionBar">
@@ -604,6 +604,14 @@ function renderHomePage(archives) {
       sourceCount,
     })}
 
+    ${renderHomeControlCenter({
+      archives: windowArchives,
+      cards: windowCards,
+      typeSummary: windowTypeSummary,
+      sourceRanks: windowSourceRanks,
+      review,
+    })}
+
     ${renderHomeTodayBoard({
       date: latestDate,
       latestHref,
@@ -615,14 +623,6 @@ function renderHomePage(archives) {
       sourceCount,
       typeSummary,
       sourceRanks,
-    })}
-
-    ${renderHomeControlCenter({
-      archives: windowArchives,
-      cards: windowCards,
-      typeSummary: windowTypeSummary,
-      sourceRanks: windowSourceRanks,
-      review,
     })}
 
     <section class="homeRouteGallery" aria-label="阅读入口">
@@ -760,12 +760,17 @@ function renderLibraryPage(archives, url) {
           <option value="all">全部类型</option>
           ${categories.map((item) => `<option value="${escapeAttribute(item.name)}">${escapeHtml(item.name)} (${item.count})</option>`).join("")}
         </select>
-        <select id="sourceSelect" aria-label="来源筛选">
-          <option value="all">全部来源</option>
-          ${sourceOptions.map((item) => `<option value="${escapeAttribute(item.name)}">${escapeHtml(item.name)} (${item.count})</option>`).join("")}
-        </select>
-        <input id="startDate" type="date" min="${escapeAttribute(dateMin)}" max="${escapeAttribute(dateMax)}" aria-label="开始日期" />
-        <input id="endDate" type="date" min="${escapeAttribute(dateMin)}" max="${escapeAttribute(dateMax)}" aria-label="结束日期" />
+        <details class="advancedFilters" open>
+          <summary>更多筛选</summary>
+          <div class="advancedFilterGrid">
+            <select id="sourceSelect" aria-label="来源筛选">
+              <option value="all">全部来源</option>
+              ${sourceOptions.map((item) => `<option value="${escapeAttribute(item.name)}">${escapeHtml(item.name)} (${item.count})</option>`).join("")}
+            </select>
+            <input id="startDate" type="date" min="${escapeAttribute(dateMin)}" max="${escapeAttribute(dateMax)}" aria-label="开始日期" />
+            <input id="endDate" type="date" min="${escapeAttribute(dateMin)}" max="${escapeAttribute(dateMax)}" aria-label="结束日期" />
+          </div>
+        </details>
         <button type="button" id="clearFilters">重置</button>
       </div>
       <div class="dateRailWrap">
@@ -774,7 +779,7 @@ function renderLibraryPage(archives, url) {
           ${dateOptions.map((item) => `<button type="button" data-date="${escapeAttribute(item.date)}">${escapeHtml(item.date)} <span>${item.count}</span></button>`).join("")}
         </div>
       </div>
-      <p class="resultLine"><span id="visibleCount">${cards.length}</span> 张卡片可见</p>
+      <p class="resultLine" aria-live="polite" aria-atomic="true"><span id="visibleCount">${cards.length}</span> 张卡片可见</p>
     </section>
 
     <section class="grid" id="cardGrid">${cardHtml}</section>
@@ -971,7 +976,7 @@ function buildPeriodReview(archives, days) {
 
 function reviewHeroHeadline(review) {
   const topics = (review.topics || []).slice(0, 2).map((item) => item.name).filter(Boolean);
-  if (topics.length) return `${review.daysCovered} 天复盘：${topics.join("/")} 主线`;
+  if (topics.length) return `${review.daysCovered} 天复盘：${topics.join("/")} 高频`;
   return `${review.daysCovered} 天复盘：等待更多归档`;
 }
 
@@ -1394,7 +1399,7 @@ function renderHomeTodayBoard({ date, latestHref, latestArchive, cards, latestSu
   return `<section class="homeTodayBoard" aria-label="今日判断">
     <div class="todayBoardHeader">
       <span>${escapeHtml(date || "最新归档")}</span>
-      <h2>今日卡片概览</h2>
+      <h2>今日重点</h2>
       <p>${escapeHtml(compactPageText(summary, 120))}</p>
     </div>
     <div class="todayBoardGrid">
@@ -1545,12 +1550,12 @@ function renderMobileDailyBrief({ archive, categories, sources, priorityReads, s
   return `<section class="mobileOnly mobilePageBrief mobileDailyBrief" aria-label="手机端单日归档摘要">
     <div class="mobileSectionHead">
       <span>${escapeHtml(archive?.date || "单日归档")}</span>
-      <strong>先读三条，再看全集</strong>
+      <strong>类型和来源摘要</strong>
       <p>${escapeHtml(compactPageText(summary, 92))}</p>
     </div>
     <div class="mobileStatStrip" aria-label="单日概况">
       <p><b>${cards.length}</b><span>卡片</span></p>
-      <p><b>${(priorityReads || []).length}</b><span>先读</span></p>
+      <p><b>${(categories || []).length}</b><span>类型</span></p>
       <p><b>${(sources || []).length}</b><span>来源</span></p>
     </div>
     ${renderMobileTopicRail(categories, "#cardGrid")}
@@ -1672,11 +1677,11 @@ function renderHomeBriefingDeck({ date, latestHref, latestArchive, cards, source
   const lead = list[0] || null;
   const picks = list.slice(1, 4);
   const stream = list.slice(4, 8);
-  const summary = latestArchive ? dailyPageSummary(latestArchive) : "等待下一次日报归档后，这里会展示今日主线和高价值条目。";
+  const summary = latestArchive ? dailyPageSummary(latestArchive) : "等待下一次日报归档后，这里会展示当天卡片、类型和来源。";
   const cardCount = Array.isArray(latestArchive?.cards) ? latestArchive.cards.length : 0;
   const leadHref = homeCardHref(lead, latestHref);
   const leadScore = lead ? cardScoreValue(lead) : 0;
-  const leadTitle = lead ? compactPageText(lead.title, 56) : "等待今日主线";
+  const leadTitle = lead ? compactPageText(lead.title, 56) : "等待今日卡片";
   const leadFact = lead
     ? compactPageText(lead.knowledge?.fact || lead.summary || "打开单日归档查看完整事实、用途和下一步。", 118)
     : "当日报生成后，这里会把真实高分内容放在首位。";
@@ -1745,7 +1750,7 @@ function renderEmptyBriefPick() {
   return `<article class="briefPick emptyBriefPick">
     <span>等待归档</span>
     <strong>暂无精选条目</strong>
-    <p>日报生成后会补充真实卡片。</p>
+    <p>日报生成后会补充当天卡片。</p>
     <em>AI HOT</em>
   </article>`;
 }
@@ -1964,13 +1969,6 @@ function renderDailyPage(archive, message, archives = []) {
       </div>
       ${renderDailyHeroScene(archive, categories, dailySources)}
     </header>
-    ${renderMobileDailyBrief({
-      archive,
-      categories,
-      sources: dailySources,
-      priorityReads,
-      summary,
-    })}
     <section class="dailyReadOrder" aria-label="推荐阅读顺序">
       <div>
         <span>优先阅读</span>
@@ -1981,6 +1979,13 @@ function renderDailyPage(archive, message, archives = []) {
         ${renderDailyReadOrder(priorityReads)}
       </div>
     </section>
+    ${renderMobileDailyBrief({
+      archive,
+      categories,
+      sources: dailySources,
+      priorityReads,
+      summary,
+    })}
     <section class="pageAtlas dailyAtlas" aria-label="单日阅读摘要">
       <div class="atlasLead">
         <span>今日覆盖</span>
@@ -2080,12 +2085,12 @@ function renderKnowledgeCard(card, options = {}) {
   const topics = escapeHtml(knowledge.topics || card.category || "");
   const title = escapeHtml(card.title || "Untitled");
   const fact = escapeHtml(knowledge.fact || card.summary || "");
-  const useCase = escapeHtml(cleanDisplayText(knowledge.useCase || ""));
-  const nextStep = escapeHtml(knowledge.nextStep || "");
+  const useCase = escapeHtml(cleanDisplayText(knowledge.useCase || knowledgeUseCaseFallback(rawType)));
+  const nextStep = escapeHtml(cleanDisplayText(knowledge.nextStep || knowledgeNextStepFallback(rawType, card)));
   const source = escapeHtml(card.source || "");
   const date = escapeHtml(card.archiveDate || "");
   const url = String(card.url || "");
-  const searchText = [card.title, card.source, card.category, rawType, knowledge.topics, knowledge.fact, knowledge.useCase]
+  const searchText = [card.title, card.source, card.category, rawType, knowledge.topics, knowledge.fact, knowledge.useCase, knowledge.nextStep]
     .filter(Boolean)
     .join(" ");
   const link = /^https?:\/\//.test(url) ? `<a class="sourceLink" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">原文</a>` : "";
@@ -2100,6 +2105,24 @@ function renderKnowledgeCard(card, options = {}) {
     </dl>
     <footer>${source ? `<span>${source}</span>` : ""}${link}</footer>
   </article>`;
+}
+
+function knowledgeUseCaseFallback(type) {
+  const text = String(type || "");
+  if (/论文|方法|实验/.test(text)) return "判断是否值得精读、复现或加入论文池。";
+  if (/工具|项目|产品/.test(text)) return "判断是否值得试用、调研或加入工具池。";
+  if (/模型|API/.test(text)) return "判断能力变化是否影响当前模型/API方案。";
+  if (/行业|监管|融资/.test(text)) return "判断行业信号是否需要转入复盘或观察清单。";
+  return "判断这条线索是否值得继续阅读和沉淀。";
+}
+
+function knowledgeNextStepFallback(type, card) {
+  const text = String(type || "");
+  if (/论文|方法|实验/.test(text)) return "先核对方法、数据集和实验设置，再决定是否精读。";
+  if (/工具|项目|产品/.test(text)) return "先确认入口、可用性和适配场景，再决定是否试用。";
+  if (/模型|API/.test(text)) return "先核对发布细节、限制和价格，再更新跟进清单。";
+  if (card?.url) return "打开原文核对细节，再决定是否加入跟进清单。";
+  return "回到单日归档查看上下文，再决定是否继续跟进。";
 }
 
 function dailyPageSummary(archive) {
@@ -2167,10 +2190,60 @@ function dailyPageScript() {
     const visibleCount = document.getElementById("visibleCount");
     const cards = [...document.querySelectorAll(".card")];
     const empty = document.getElementById("emptyState");
-    let activeType = "all";
-    let activeDate = "all";
+    const advancedFilters = document.querySelector(".advancedFilters");
+    const params = new URLSearchParams(window.location.search);
+    let activeType = params.get("type") || "all";
+    let activeDate = params.get("archiveDate") || "all";
 
-    function applyFilters() {
+    function setSelectValue(select, value) {
+      if (!select || !value) return;
+      const exists = [...select.options].some((option) => option.value === value);
+      if (exists) select.value = value;
+    }
+
+    function syncControlsFromUrl() {
+      if (input) input.value = params.get("q") || "";
+      if (typeSelect && ![...typeSelect.options].some((option) => option.value === activeType)) activeType = "all";
+      setSelectValue(typeSelect, activeType);
+      setSelectValue(sourceSelect, params.get("source") || "all");
+      if (startDate) startDate.value = params.get("start") || "";
+      if (endDate) endDate.value = params.get("end") || "";
+      for (const item of typeButtons) item.classList.toggle("active", item.dataset.filter === activeType);
+      if (typeButtons.length && !typeButtons.some((item) => item.classList.contains("active"))) {
+        for (const item of typeButtons) item.classList.toggle("active", item.dataset.filter === "all");
+        activeType = "all";
+      }
+      for (const item of dateButtons) item.classList.toggle("active", item.dataset.date === activeDate);
+      if (dateButtons.length && !dateButtons.some((item) => item.classList.contains("active"))) {
+        for (const item of dateButtons) item.classList.toggle("active", item.dataset.date === "all");
+        activeDate = "all";
+      }
+      const hasAdvancedFilter = Boolean((params.get("source") && params.get("source") !== "all") || params.get("start") || params.get("end"));
+      if (advancedFilters && window.matchMedia("(max-width: 760px)").matches) advancedFilters.open = hasAdvancedFilter;
+    }
+
+    function updateUrlState() {
+      const url = new URL(window.location.href);
+      const query = (input?.value || "").trim();
+      const selectedSource = sourceSelect?.value || "all";
+      const from = startDate?.value || "";
+      const to = endDate?.value || "";
+      const next = {
+        q: query,
+        type: activeType === "all" ? "" : activeType,
+        source: selectedSource === "all" ? "" : selectedSource,
+        start: from,
+        end: to,
+        archiveDate: activeDate === "all" ? "" : activeDate,
+      };
+      for (const [key, value] of Object.entries(next)) {
+        if (value) url.searchParams.set(key, value);
+        else url.searchParams.delete(key);
+      }
+      window.history.replaceState(null, "", url);
+    }
+
+    function applyFilters(options = {}) {
       const query = (input?.value || "").trim().toLowerCase();
       const from = startDate?.value || "";
       const to = endDate?.value || "";
@@ -2190,21 +2263,25 @@ function dailyPageScript() {
       }
       if (empty) empty.hidden = visible !== 0;
       if (visibleCount) visibleCount.textContent = String(visible);
+      if (options.updateUrl !== false) updateUrlState();
     }
 
-    input?.addEventListener("input", applyFilters);
+    syncControlsFromUrl();
+    input?.addEventListener("input", () => applyFilters());
     typeSelect?.addEventListener("change", () => {
       activeType = typeSelect.value || "all";
+      for (const item of typeButtons) item.classList.toggle("active", item.dataset.filter === activeType);
       applyFilters();
     });
-    sourceSelect?.addEventListener("change", applyFilters);
-    startDate?.addEventListener("change", applyFilters);
-    endDate?.addEventListener("change", applyFilters);
+    sourceSelect?.addEventListener("change", () => applyFilters());
+    startDate?.addEventListener("change", () => applyFilters());
+    endDate?.addEventListener("change", () => applyFilters());
 
     for (const button of typeButtons) {
       button.addEventListener("click", () => {
         activeType = button.dataset.filter || "all";
         for (const item of typeButtons) item.classList.toggle("active", item === button);
+        if (typeSelect) typeSelect.value = activeType;
         applyFilters();
       });
     }
@@ -2227,7 +2304,7 @@ function dailyPageScript() {
       for (const item of dateButtons) item.classList.toggle("active", item.dataset.date === "all");
       applyFilters();
     });
-    applyFilters();
+    applyFilters({ updateUrl: false });
   `;
 }
 
@@ -9123,6 +9200,20 @@ function dailyPageCSS() {
       }
     }
     /* Responsive content hierarchy: desktop control center, tablet two-column, mobile content-first. */
+    .finderTop {
+      grid-template-columns: minmax(240px, 1fr) 170px minmax(390px, 0.92fr) auto !important;
+    }
+    .advancedFilters {
+      min-width: 0;
+    }
+    .advancedFilters summary {
+      display: none;
+    }
+    .advancedFilterGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
     .homeControlCenter {
       display: grid;
       grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.34fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr);
@@ -9303,6 +9394,12 @@ function dailyPageCSS() {
       .finderTop .search {
         grid-column: 1 / -1;
       }
+      .advancedFilters {
+        grid-column: 1 / -1;
+      }
+      .advancedFilterGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .grid,
       .reviewSampleGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -9377,32 +9474,20 @@ function dailyPageCSS() {
         margin-top: 4px !important;
       }
       .mobileHomeFlow + .homeTodayBoard,
+      .homeTodayBoard,
       .homeControlCenter,
+      .featureHero,
       .featureScene,
-      .homeHeroBrief {
+      .homeHeroBrief,
+      .reviewOverview {
         display: none !important;
-      }
-      .featureHero {
-        min-height: auto !important;
-        margin-inline: -14px !important;
-        padding: 16px 18px 18px !important;
-      }
-      .featureHero h1 {
-        max-width: 100% !important;
-      }
-      .featureHero .muted {
-        display: -webkit-box !important;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden !important;
       }
       .mobileTopicRail {
         margin-top: 2px;
       }
-      .mobilePageBrief .mobileSourceCard,
       .mobileReviewBrief .mobileDataBoard,
       .mobileReviewBrief .mobileSourceCard,
-      .mobileDailyBrief .mobileSourceCard {
+      .mobileLibraryBrief .mobileSourceCard {
         display: none !important;
       }
       .mobileSignalStack {
@@ -9413,6 +9498,52 @@ function dailyPageCSS() {
       }
       .finderPanel {
         margin-top: 10px !important;
+      }
+      .finderTop {
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      .advancedFilters {
+        min-width: 0;
+        border: 1px solid color-mix(in oklch, var(--line) 78%, white);
+        border-radius: 14px;
+        background: color-mix(in oklch, white 78%, transparent);
+        overflow: hidden;
+      }
+      .advancedFilters summary {
+        min-height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 14px;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 760;
+        cursor: pointer;
+        list-style: none;
+      }
+      .advancedFilters summary::-webkit-details-marker {
+        display: none;
+      }
+      .advancedFilters summary::after {
+        content: "+";
+        color: var(--accent-ink);
+        font-size: 18px;
+        line-height: 1;
+      }
+      .advancedFilters[open] summary::after {
+        content: "-";
+      }
+      .advancedFilterGrid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px;
+        padding: 0 10px 10px;
+      }
+      #sourceSelect,
+      #startDate,
+      #endDate {
+        display: block !important;
       }
       .dailyTools {
         display: none !important;
@@ -9439,6 +9570,218 @@ function dailyPageCSS() {
       .meta span,
       .meta a {
         min-width: 0;
+      }
+      .card dl {
+        display: grid !important;
+        gap: 6px;
+        padding-top: 2px;
+      }
+      .card dl div {
+        display: grid !important;
+        grid-template-columns: 46px minmax(0, 1fr);
+        gap: 8px;
+      }
+      .card dt {
+        color: var(--faint);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .card dd {
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    }
+    @media (min-width: 761px) {
+      .homeWorkbenchHero {
+        min-height: auto !important;
+        grid-template-columns: minmax(0, 0.9fr) minmax(390px, 0.78fr) !important;
+        gap: clamp(22px, 3.2vw, 40px) !important;
+        align-items: stretch !important;
+        padding: clamp(22px, 3vw, 34px) 0 clamp(18px, 2.4vw, 28px) !important;
+        margin-bottom: clamp(16px, 2.2vw, 24px);
+      }
+      .homeWorkbenchHero::before {
+        inset: -18px calc(50% - 50vw + 8px) -22px !important;
+        background:
+          radial-gradient(circle at 84% 18%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 24rem),
+          radial-gradient(circle at 12% 18%, color-mix(in oklch, var(--accent-3) 7%, transparent), transparent 22rem),
+          linear-gradient(112deg, oklch(0.94 0.026 184), oklch(0.982 0.006 216) 56%, oklch(0.948 0.024 226)) !important;
+        mask-image: linear-gradient(180deg, #000 0%, #000 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 90%, transparent 100%);
+      }
+      .homeWorkbenchHero::after {
+        display: none !important;
+      }
+      .homeWorkbenchHero .heroCopyBlock {
+        min-height: 286px;
+        display: grid;
+        align-content: center;
+      }
+      .homeWorkbenchHero .heroKicker {
+        margin-bottom: 10px;
+        color: var(--accent-ink);
+      }
+      .homeWorkbenchHero .heroCopyBlock h1 {
+        max-width: 11ch !important;
+        font-size: clamp(38px, 4.5vw, 58px) !important;
+        line-height: 1.05 !important;
+      }
+      .homeWorkbenchHero .heroLead {
+        max-width: 56ch !important;
+        margin-top: 14px !important;
+        color: color-mix(in oklch, var(--ink) 74%, white);
+        font-size: clamp(16px, 1.2vw, 18px) !important;
+        line-height: 1.68 !important;
+      }
+      .homeWorkbenchHero .heroActionBar {
+        margin-top: 18px !important;
+      }
+      .homeWorkbenchHero .heroActionBar .primaryLink,
+      .homeWorkbenchHero .heroActionBar .navButton {
+        flex: 0 1 auto;
+        min-width: 150px;
+        min-height: 44px;
+      }
+      .homeWorkbenchHero .heroCapsules {
+        margin-top: 16px;
+      }
+      .homeWorkbenchHero .homeHeroBrief {
+        min-height: 286px;
+        align-content: stretch;
+        padding: 16px !important;
+        border-radius: 18px !important;
+        background: color-mix(in oklch, white 82%, transparent) !important;
+        box-shadow: 0 10px 22px color-mix(in oklch, oklch(0.36 0.05 220) 9%, transparent) !important;
+      }
+      .homeWorkbenchHero .heroBriefLead {
+        padding: 16px !important;
+      }
+      .homeWorkbenchHero .heroBriefLead strong {
+        max-width: 18ch !important;
+        font-size: clamp(22px, 2.2vw, 30px) !important;
+        line-height: 1.12 !important;
+      }
+      .homeWorkbenchHero .heroBriefLead p {
+        -webkit-line-clamp: 2 !important;
+      }
+      .homeControlCenter {
+        margin-top: 0 !important;
+      }
+      .controlIntro {
+        align-content: start !important;
+      }
+      .controlIntro h2 {
+        font-size: clamp(24px, 2.1vw, 30px) !important;
+      }
+      .controlIntro p,
+      .controlPanelHead p {
+        font-size: 13.5px;
+      }
+      .controlCadence {
+        min-height: 174px !important;
+      }
+      .controlCadence a {
+        min-height: 150px !important;
+      }
+    }
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .homeWorkbenchHero {
+        grid-template-columns: minmax(260px, 0.84fr) minmax(300px, 1fr) !important;
+        gap: 18px !important;
+        padding: 24px 0 18px !important;
+      }
+      .homeWorkbenchHero .heroCopyBlock {
+        min-height: auto;
+        align-content: center;
+      }
+      .homeWorkbenchHero .heroCopyBlock h1 {
+        max-width: 12ch !important;
+        font-size: clamp(36px, 7vw, 52px) !important;
+      }
+      .homeWorkbenchHero .heroLead {
+        max-width: 58ch !important;
+      }
+      .homeWorkbenchHero .homeHeroBrief {
+        min-height: auto !important;
+        display: grid !important;
+        gap: 10px !important;
+        align-content: start !important;
+        padding: 14px !important;
+        border-radius: 18px !important;
+        box-shadow: none !important;
+      }
+      .homeWorkbenchHero .heroBriefTop {
+        gap: 8px !important;
+      }
+      .homeWorkbenchHero .heroBriefTop p,
+      .homeWorkbenchHero .heroBriefLead p {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .homeWorkbenchHero .heroBriefLead {
+        display: grid !important;
+        padding: 14px !important;
+        gap: 8px !important;
+      }
+      .homeWorkbenchHero .heroBriefLead strong {
+        max-width: 100% !important;
+        font-size: clamp(20px, 3vw, 24px) !important;
+        line-height: 1.15 !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .homeWorkbenchHero .heroBriefFacts {
+        gap: 8px !important;
+      }
+      .homeWorkbenchHero .heroBriefFacts p {
+        padding: 10px !important;
+      }
+      .homeWorkbenchHero .heroActionBar .primaryLink,
+      .homeWorkbenchHero .heroActionBar .navButton {
+        flex: 1 1 190px;
+      }
+    }
+    @media (max-width: 1040px) {
+      .dateRailWrap {
+        overflow: hidden;
+      }
+      .dateRail,
+      .mobileTopicRail {
+        scrollbar-width: none;
+        scroll-padding-inline: 14px;
+        mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 44px), transparent 100%);
+        -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 calc(100% - 44px), transparent 100%);
+      }
+      .dateRail::-webkit-scrollbar,
+      .mobileTopicRail::-webkit-scrollbar {
+        display: none;
+      }
+      .dateRail {
+        padding-right: 62px !important;
+      }
+      .mobileTopicRail {
+        padding-right: 58px !important;
+      }
+    }
+    @media (max-width: 760px) {
+      #clearFilters {
+        border-color: color-mix(in oklch, var(--line) 82%, white) !important;
+        background: color-mix(in oklch, white 68%, transparent) !important;
+        color: var(--faint) !important;
+        font-weight: 680;
+      }
+      .search input {
+        border-color: color-mix(in oklch, var(--accent) 20%, var(--line)) !important;
+        background: color-mix(in oklch, white 88%, transparent) !important;
       }
     }
     @media (hover: hover) and (pointer: fine) {
