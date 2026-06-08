@@ -32,7 +32,7 @@ import {
 const SITE_SNAPSHOT_KV_KEY = "site_snapshot:v1";
 const PUBLIC_BROWSER_CACHE_SECONDS = 60;
 const PUBLIC_EDGE_CACHE_SECONDS = 10 * 60;
-const PUBLIC_HTML_CACHE_VERSION = "2026-06-09-home-editorial";
+const PUBLIC_HTML_CACHE_VERSION = "2026-06-09-mobile-native-redesign";
 
 export default {
   async fetch(request, env, ctx) {
@@ -42,7 +42,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "aihot-feishu-briefing",
-        version: "2026-06-09-home-editorial",
+        version: "2026-06-09-mobile-native-redesign",
         cron: "29 13 * * *",
         timezone_note: "Trigger Beijing 21:29 = UTC 13:29; Feishu send waits until Beijing 21:30 if ready early.",
       });
@@ -580,6 +580,20 @@ function renderHomePage(archives) {
       })}
     </section>
 
+    ${renderMobileHomeFlow({
+      date: latestDate,
+      latestHref,
+      latestArchive,
+      latestSummary,
+      cards: briefingCards,
+      archives: safeArchives,
+      typeSummary,
+      sourceRanks,
+      paperCount,
+      toolCount,
+      sourceCount,
+    })}
+
     ${renderHomeTodayBoard({
       date: latestDate,
       latestHref,
@@ -665,6 +679,16 @@ function renderLibraryPage(archives, url) {
       </div>
       ${renderLibraryHeroScene({ categories, sourceRanks, paperCount, toolCount, latestHeadline, dateMax })}
     </header>
+
+    ${renderMobileLibraryBrief({
+      rangeText,
+      latestDate,
+      cards,
+      categories,
+      sourceRanks,
+      paperCount,
+      toolCount,
+    })}
 
     <section class="pageAtlas libraryAtlas" aria-label="知识库概览">
       <div class="atlasLead">
@@ -785,6 +809,14 @@ function renderReviewPage(archives, url) {
       </div>
       ${renderReviewHeroScene(review, selectedArchives)}
     </header>
+
+    ${renderMobileReviewBrief({
+      review,
+      archives: selectedArchives,
+      categories: selectedCategories,
+      sources: selectedSources,
+      days,
+    })}
 
     <section class="reviewIdentity" aria-label="页面区别">
       <div>
@@ -1364,6 +1396,164 @@ function renderHomeTodayBoard({ date, latestHref, latestArchive, cards, latestSu
   </section>`;
 }
 
+function renderMobileHomeFlow({ date, latestHref, latestArchive, latestSummary, cards, archives, typeSummary, sourceRanks, paperCount, toolCount, sourceCount }) {
+  const list = uniqueCards(cards || []).slice(0, 5);
+  const summary = latestArchive ? latestSummary : "日报生成后会展示当天主线、代表条目和继续追踪入口。";
+  return `<section class="mobileOnly mobileHomeFlow" aria-label="手机端今日信息流">
+    <article class="mobileTodayCard">
+      <div class="mobileSectionHead">
+        <span>${escapeHtml(date || "最新归档")}</span>
+        <strong>今日 AI 摘要</strong>
+        <p>${escapeHtml(compactPageText(summary, 94))}</p>
+      </div>
+      <div class="mobileStatStrip" aria-label="归档概况">
+        <p><b>${Array.isArray(latestArchive?.cards) ? latestArchive.cards.length : 0}</b><span>今日卡片</span></p>
+        <p><b>${paperCount}</b><span>论文线索</span></p>
+        <p><b>${sourceCount}</b><span>来源</span></p>
+      </div>
+      ${renderMobileSignalStack(list, latestHref, 3)}
+    </article>
+    ${renderMobileTopicRail(typeSummary, "/library")}
+    <section class="mobileDataBoard" aria-label="移动端数据概览">
+      <article class="mobileDataCard">
+        <div class="mobileMiniHead"><span>归档节奏</span><b>近 14 天</b></div>
+        ${renderMobileCadenceBars((archives || []).slice(0, 14))}
+      </article>
+      <article class="mobileDataCard">
+        <div class="mobileMiniHead"><span>内容结构</span><b>${toolCount} 个工具</b></div>
+        ${renderMobileTypeRows(typeSummary, 4)}
+      </article>
+    </section>
+    ${renderMobileSourceRows(sourceRanks, "高频来源")}
+  </section>`;
+}
+
+function renderMobileLibraryBrief({ rangeText, latestDate, cards, categories, sourceRanks, paperCount, toolCount }) {
+  return `<section class="mobileOnly mobilePageBrief mobileLibraryBrief" aria-label="手机端知识库导览">
+    <div class="mobileSectionHead">
+      <span>${escapeHtml(latestDate || "最新归档")}</span>
+      <strong>先搜索，再筛选</strong>
+      <p>${escapeHtml(rangeText)}，${cards.length} 张卡片。手机端保留关键词、类型和日期，先把结果缩到可读范围。</p>
+    </div>
+    <div class="mobileStatStrip" aria-label="知识库概况">
+      <p><b>${cards.length}</b><span>卡片</span></p>
+      <p><b>${paperCount}</b><span>论文</span></p>
+      <p><b>${toolCount}</b><span>工具</span></p>
+    </div>
+    ${renderMobileTopicRail(categories, "#libraryFinder")}
+    ${renderMobileSourceRows(sourceRanks, "常见来源")}
+  </section>`;
+}
+
+function renderMobileReviewBrief({ review, archives, categories, sources, days }) {
+  return `<section class="mobileOnly mobilePageBrief mobileReviewBrief" aria-label="手机端阶段复盘摘要">
+    <div class="mobileSectionHead">
+      <span>${days} 天窗口</span>
+      <strong>周期先看密度</strong>
+      <p>${escapeHtml(compactPageText(review.summary, 96))}</p>
+    </div>
+    <div class="mobileStatStrip" aria-label="阶段复盘概况">
+      <p><b>${review.cardCount}</b><span>卡片</span></p>
+      <p><b>${review.paperCount}</b><span>论文</span></p>
+      <p><b>${review.sourceCount}</b><span>来源</span></p>
+    </div>
+    <section class="mobileDataBoard">
+      <article class="mobileDataCard">
+        <div class="mobileMiniHead"><span>近期走势</span><b>${review.daysCovered} 天</b></div>
+        ${renderMobileCadenceBars((archives || []).slice(0, 14))}
+      </article>
+      <article class="mobileDataCard">
+        <div class="mobileMiniHead"><span>方向分布</span><b>Top ${Math.min((categories || []).length, 4)}</b></div>
+        ${renderMobileTypeRows(categories, 4)}
+      </article>
+    </section>
+    ${renderMobileSourceRows(sources, "来源集中度")}
+  </section>`;
+}
+
+function renderMobileDailyBrief({ archive, categories, sources, priorityReads, summary }) {
+  const cards = Array.isArray(archive?.cards) ? archive.cards : [];
+  return `<section class="mobileOnly mobilePageBrief mobileDailyBrief" aria-label="手机端单日归档摘要">
+    <div class="mobileSectionHead">
+      <span>${escapeHtml(archive?.date || "单日归档")}</span>
+      <strong>先读三条，再看全集</strong>
+      <p>${escapeHtml(compactPageText(summary, 92))}</p>
+    </div>
+    <div class="mobileStatStrip" aria-label="单日概况">
+      <p><b>${cards.length}</b><span>卡片</span></p>
+      <p><b>${(priorityReads || []).length}</b><span>先读</span></p>
+      <p><b>${(sources || []).length}</b><span>来源</span></p>
+    </div>
+    ${renderMobileTopicRail(categories, "#cardGrid")}
+    ${renderMobileSourceRows(sources, "今日来源")}
+  </section>`;
+}
+
+function renderMobileSignalStack(cards, fallbackHref, limit = 3) {
+  const list = uniqueCards(cards || []).slice(0, limit);
+  if (!list.length) {
+    return `<div class="mobileSignalStack"><article class="mobileSignalRow"><span>等待归档</span><strong>暂无今日主线</strong><p>下一次日报生成后会补充真实卡片。</p></article></div>`;
+  }
+  return `<div class="mobileSignalStack">${list
+    .map((card, index) => {
+      const href = homeCardHref(card, fallbackHref);
+      const title = compactPageText(card.title || "Untitled", index === 0 ? 54 : 42);
+      const fact = compactPageText(card.knowledge?.fact || card.summary || card.source || "", index === 0 ? 86 : 64);
+      const score = cardScoreValue(card);
+      const label = score ? signalPriorityLabel(score) : cardActionLabel(card);
+      return `<a class="mobileSignalRow ${index === 0 ? "mobileSignalLead" : ""}" href="${href}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(fact)}</p>
+        <em>${escapeHtml(compactPageText(card.source || "AI HOT", 24))} · ${escapeHtml(cardType(card))}</em>
+      </a>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderMobileTopicRail(items, href) {
+  const list = (Array.isArray(items) ? items : []).filter((item) => item && item.name).slice(0, 8);
+  if (!list.length) return "";
+  return `<nav class="mobileTopicRail" aria-label="移动端主题快扫">
+    ${list.map((item) => `<a href="${href}"><span>${escapeHtml(compactPageText(item.name, 10))}</span><b>${Number(item.count) || 0}</b></a>`).join("")}
+  </nav>`;
+}
+
+function renderMobileCadenceBars(archives) {
+  const list = [...(archives || [])].filter((archive) => archive?.date).reverse();
+  if (!list.length) return `<p class="muted small">暂无节奏数据。</p>`;
+  const counts = list.map((archive) => (Array.isArray(archive.cards) ? archive.cards.length : 0));
+  const max = Math.max(...counts, 1);
+  return `<div class="mobileCadenceBars">${list
+    .map((archive, index) => {
+      const count = counts[index];
+      const height = Math.max(18, Math.round((count / max) * 100));
+      return `<i style="--h:${height}%"><b></b><span>${escapeHtml(String(archive.date).slice(5))}</span></i>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderMobileTypeRows(items, limit = 4) {
+  const list = (Array.isArray(items) ? items : []).filter((item) => item && item.name).slice(0, limit);
+  if (!list.length) return `<p class="muted small">暂无结构数据。</p>`;
+  const max = Math.max(...list.map((item) => Number(item.count) || 0), 1);
+  return `<div class="mobileTypeRows">${list
+    .map((item) => {
+      const width = Math.max(14, Math.round(((Number(item.count) || 0) / max) * 100));
+      return `<p><span>${escapeHtml(compactPageText(item.name, 16))}</span><b>${Number(item.count) || 0}</b><em><i style="width:${width}%"></i></em></p>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderMobileSourceRows(items, title) {
+  const list = (Array.isArray(items) ? items : []).filter((item) => item && item.name).slice(0, 4);
+  if (!list.length) return "";
+  return `<section class="mobileSourceCard" aria-label="${escapeAttribute(title)}">
+    <div class="mobileMiniHead"><span>${escapeHtml(title)}</span><b>${list.length} 个</b></div>
+    ${renderMobileTypeRows(list, 4)}
+  </section>`;
+}
+
 function renderHomeTodayLead(card, fallbackHref) {
   if (!card) {
     return `<article class="todayLead emptyBriefPick">
@@ -1705,6 +1895,13 @@ function renderDailyPage(archive, message, archives = []) {
       </div>
       ${renderDailyHeroScene(archive, categories, dailySources)}
     </header>
+    ${renderMobileDailyBrief({
+      archive,
+      categories,
+      sources: dailySources,
+      priorityReads,
+      summary,
+    })}
     <section class="dailyReadOrder" aria-label="推荐阅读顺序">
       <div>
         <span>优先阅读</span>
@@ -1997,6 +2194,11 @@ function dailyPageCSS() {
       --accent-press: color-mix(in oklch, var(--accent) 24%, white);
       --focus-ring: 0 0 0 4px color-mix(in oklch, var(--accent) 24%, transparent);
       --focus-shadow: 0 8px 16px color-mix(in oklch, oklch(0.36 0.05 220) 14%, transparent);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-standard: cubic-bezier(0.25, 1, 0.5, 1);
+      --dur-press: 110ms;
+      --dur-hover: 180ms;
+      --dur-panel: 320ms;
     }
     * { box-sizing: border-box; }
     html { overflow-x: clip; }
@@ -3166,6 +3368,10 @@ function dailyPageCSS() {
     }
     footer span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     a { color: var(--accent); text-decoration: none; font-weight: 700; }
+    :is(a, button, input, select) {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
     a:hover { text-decoration: underline; }
     a:focus-visible,
     button:focus-visible,
@@ -7944,6 +8150,9 @@ function dailyPageCSS() {
     .homeRouteGallery {
       margin-top: clamp(22px, 3.2vw, 38px);
     }
+    .mobileOnly {
+      display: none !important;
+    }
     @media (max-width: 1040px) {
       .homeArtHero {
         grid-template-columns: minmax(0, 1fr);
@@ -8058,7 +8267,7 @@ function dailyPageCSS() {
       .homeShell {
         width: 100%;
         max-width: 430px;
-        padding: 12px 14px calc(92px + env(safe-area-inset-bottom, 0px));
+        padding: 12px 14px calc(108px + env(safe-area-inset-bottom, 0px));
       }
       .siteNav {
         position: sticky;
@@ -8068,7 +8277,11 @@ function dailyPageCSS() {
         transform: none !important;
         will-change: auto;
         display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
         min-height: 52px !important;
+        height: 52px;
+        overflow: visible;
         margin: 0 0 14px;
         padding: 8px 10px !important;
         border-radius: 16px;
@@ -8079,11 +8292,20 @@ function dailyPageCSS() {
         -webkit-backdrop-filter: none !important;
       }
       .brandMark {
+        grid-column: auto !important;
+        grid-row: auto !important;
         min-height: 36px;
         padding: 0 4px;
         font-size: 16px;
+        margin-right: auto;
       }
       .navStatus {
+        grid-column: auto !important;
+        grid-row: auto !important;
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        margin-left: 0;
         display: inline-flex !important;
         min-height: 36px;
         max-width: 138px;
@@ -8179,9 +8401,7 @@ function dailyPageCSS() {
         overflow: visible;
       }
       .heroActionBar {
-        grid-template-columns: 1fr !important;
-        gap: 8px !important;
-        margin-top: 6px !important;
+        display: none !important;
       }
       .heroActionBar .primaryLink,
       .heroActionBar .navButton {
@@ -8195,8 +8415,7 @@ function dailyPageCSS() {
       }
       .heroCapsules,
       .stats {
-        margin-top: 4px;
-        gap: 7px !important;
+        display: none !important;
       }
       .heroCapsules span,
       .stats span {
@@ -8207,6 +8426,296 @@ function dailyPageCSS() {
       .homeHeroBrief,
       .heroPortalScene,
       .featureScene {
+        display: none !important;
+      }
+      .mobileOnly {
+        display: grid !important;
+      }
+      .mobileHomeFlow,
+      .mobilePageBrief {
+        margin: 14px 0 0;
+        gap: 12px;
+      }
+      .mobileTodayCard,
+      .mobilePageBrief,
+      .mobileDataCard,
+      .mobileSourceCard {
+        min-width: 0;
+        border: 1px solid color-mix(in oklch, var(--line) 78%, white);
+        border-radius: 18px;
+        background: color-mix(in oklch, white 84%, transparent);
+        box-shadow: none;
+      }
+      .mobileTodayCard,
+      .mobilePageBrief {
+        padding: 14px;
+      }
+      .mobileSectionHead,
+      .mobileMiniHead {
+        min-width: 0;
+        display: grid;
+        gap: 7px;
+      }
+      .mobileSectionHead span,
+      .mobileMiniHead span {
+        width: fit-content;
+        min-height: 28px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 9px;
+        color: var(--accent-ink);
+        background: color-mix(in oklch, var(--accent-soft) 86%, white);
+        font-size: 12px;
+        font-weight: 780;
+      }
+      .mobileSectionHead strong {
+        color: var(--ink);
+        font-size: 24px;
+        line-height: 1.12;
+        letter-spacing: 0;
+        text-wrap: balance;
+      }
+      .mobileSectionHead p {
+        max-width: 100%;
+        margin: 0;
+        color: var(--muted);
+        font-size: 14.5px;
+        line-height: 1.62;
+        text-wrap: pretty;
+      }
+      .mobileMiniHead {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+      }
+      .mobileMiniHead b {
+        color: var(--faint);
+        font-size: 12px;
+        font-weight: 740;
+        font-variant-numeric: tabular-nums;
+      }
+      .mobileStatStrip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .mobileStatStrip p {
+        min-width: 0;
+        min-height: 64px;
+        margin: 0;
+        border-radius: 14px;
+        background: color-mix(in oklch, white 70%, transparent);
+        padding: 10px;
+        display: grid;
+        align-content: center;
+        gap: 3px;
+      }
+      .mobileStatStrip b {
+        color: var(--ink);
+        font-size: 22px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .mobileStatStrip span {
+        min-width: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .mobileSignalStack {
+        display: grid;
+        gap: 9px;
+        margin-top: 12px;
+      }
+      .mobileSignalRow {
+        min-width: 0;
+        min-height: 96px;
+        border: 1px solid color-mix(in oklch, var(--line) 80%, white);
+        border-radius: 14px;
+        background: color-mix(in oklch, white 82%, transparent);
+        color: var(--ink);
+        text-decoration: none;
+        padding: 13px;
+        display: grid;
+        gap: 7px;
+        transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, background 180ms ease;
+      }
+      .mobileSignalLead {
+        min-height: 142px;
+        background:
+          radial-gradient(circle at 88% 10%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 12rem),
+          color-mix(in oklch, white 80%, var(--accent-soft));
+      }
+      .mobileSignalRow span {
+        width: fit-content;
+        min-height: 26px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 9px;
+        color: var(--accent-ink);
+        background: color-mix(in oklch, var(--accent-soft) 88%, white);
+        font-size: 12px;
+        font-weight: 780;
+      }
+      .mobileSignalRow strong {
+        min-width: 0;
+        color: var(--ink);
+        font-size: 16.5px;
+        line-height: 1.34;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .mobileSignalLead strong {
+        font-size: 20px;
+        line-height: 1.2;
+      }
+      .mobileSignalRow p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .mobileSignalRow em {
+        min-width: 0;
+        color: var(--faint);
+        font-size: 12px;
+        font-style: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .mobileTopicRail {
+        margin-inline: -14px;
+        padding: 0 14px 2px;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+      .mobileTopicRail::-webkit-scrollbar {
+        display: none;
+      }
+      .mobileTopicRail a {
+        flex: 0 0 auto;
+        min-height: 40px;
+        max-width: 156px;
+        border: 1px solid color-mix(in oklch, var(--line) 78%, white);
+        border-radius: 999px;
+        background: color-mix(in oklch, white 78%, transparent);
+        color: var(--ink);
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        text-decoration: none;
+        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      }
+      .mobileTopicRail span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 740;
+      }
+      .mobileTopicRail b {
+        color: var(--accent-ink);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .mobileDataBoard {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+      .mobileDataCard,
+      .mobileSourceCard {
+        padding: 13px;
+        display: grid;
+        gap: 12px;
+      }
+      .mobileCadenceBars {
+        height: 118px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(14px, 1fr));
+        align-items: end;
+        gap: 6px;
+      }
+      .mobileCadenceBars i {
+        min-width: 0;
+        height: 100%;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: 6px;
+        font-style: normal;
+      }
+      .mobileCadenceBars b {
+        align-self: end;
+        height: var(--h);
+        min-height: 18px;
+        border-radius: 999px 999px 6px 6px;
+        background: linear-gradient(180deg, color-mix(in oklch, var(--accent) 78%, white), color-mix(in oklch, var(--accent-3) 68%, white));
+      }
+      .mobileCadenceBars span {
+        color: var(--faint);
+        font-size: 9px;
+        line-height: 1;
+        writing-mode: vertical-rl;
+        justify-self: center;
+      }
+      .mobileTypeRows {
+        display: grid;
+        gap: 9px;
+      }
+      .mobileTypeRows p {
+        min-width: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px 10px;
+        align-items: center;
+      }
+      .mobileTypeRows span {
+        min-width: 0;
+        color: var(--ink);
+        font-size: 13.5px;
+        font-weight: 740;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .mobileTypeRows b {
+        color: var(--accent-ink);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .mobileTypeRows em {
+        grid-column: 1 / -1;
+        height: 7px;
+        border-radius: 999px;
+        background: color-mix(in oklch, var(--accent-soft) 48%, white);
+        overflow: hidden;
+      }
+      .mobileTypeRows i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      }
+      .mobileHomeFlow + .homeTodayBoard {
         display: none !important;
       }
       .homeTodayBoard {
@@ -8283,13 +8792,13 @@ function dailyPageCSS() {
       .todayLead strong {
         max-width: 100% !important;
         color: var(--ink);
-        font-size: 22px !important;
+        font-size: 20px !important;
         line-height: 1.18 !important;
         white-space: normal !important;
         overflow-wrap: break-word;
         word-break: normal;
         display: -webkit-box;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
@@ -8299,7 +8808,7 @@ function dailyPageCSS() {
         font-size: 14.5px;
         line-height: 1.6;
         display: -webkit-box;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
@@ -8530,6 +9039,55 @@ function dailyPageCSS() {
       }
       :where(.todayLead, .todayQueueCard, .routePane, .card, .readOrderItem, .reviewGlassBlock, .finderPanel, .dailyReadOrder) {
         border-color: color-mix(in oklch, var(--line) 78%, white) !important;
+      }
+      :where(.primaryLink, .navButton, .navLinks a, .mobileSignalRow, .mobileTopicRail a, .routePane, .card, .todayLead, .todayQueueCard, .readOrderItem, .rangeSwitch a, .dateRail button, .segments button):active {
+        transform: scale(0.985) !important;
+        border-color: var(--accent-line) !important;
+        background: color-mix(in oklch, var(--accent-soft) 84%, white) !important;
+        color: var(--accent-ink) !important;
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 18%, transparent) !important;
+      }
+      .mobileSignalRow:active strong,
+      .mobileTopicRail a:active span,
+      .navLinks a:active {
+        color: var(--accent-ink) !important;
+      }
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover,
+      .card:focus-within,
+      .routePane:hover,
+      .routePane:focus-visible,
+      .mobileSignalRow:hover,
+      .mobileSignalRow:focus-visible,
+      .mobileTopicRail a:hover,
+      .mobileTopicRail a:focus-visible,
+      .todayLead:hover,
+      .todayLead:focus-visible,
+      .todayQueueCard:hover,
+      .todayQueueCard:focus-visible,
+      .readOrderItem:hover,
+      .readOrderItem:focus-within {
+        transform: translateY(-2px);
+        border-color: var(--accent-line) !important;
+        background:
+          radial-gradient(circle at 90% 10%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 14rem),
+          color-mix(in oklch, white 84%, var(--accent-soft)) !important;
+        box-shadow: var(--focus-ring), var(--focus-shadow) !important;
+      }
+      .card:hover :is(h2, strong, a, .type),
+      .card:focus-within :is(h2, strong, a, .type),
+      .routePane:hover :is(strong, span),
+      .routePane:focus-visible :is(strong, span),
+      .mobileSignalRow:hover :is(strong, span),
+      .mobileSignalRow:focus-visible :is(strong, span),
+      .mobileTopicRail a:hover :is(span, b),
+      .mobileTopicRail a:focus-visible :is(span, b),
+      .todayLead:hover :is(strong, span),
+      .todayLead:focus-visible :is(strong, span),
+      .todayQueueCard:hover :is(strong, span),
+      .todayQueueCard:focus-visible :is(strong, span) {
+        color: var(--accent-ink) !important;
       }
     }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
