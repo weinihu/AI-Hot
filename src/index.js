@@ -32,7 +32,7 @@ import {
 const SITE_SNAPSHOT_KV_KEY = "site_snapshot:v1";
 const PUBLIC_BROWSER_CACHE_SECONDS = 60;
 const PUBLIC_EDGE_CACHE_SECONDS = 10 * 60;
-const PUBLIC_HTML_CACHE_VERSION = "2026-06-09-mobile-native-redesign";
+const PUBLIC_HTML_CACHE_VERSION = "2026-06-09-responsive-portal";
 
 export default {
   async fetch(request, env, ctx) {
@@ -42,7 +42,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "aihot-feishu-briefing",
-        version: "2026-06-09-mobile-native-redesign",
+        version: "2026-06-09-responsive-portal",
         cron: "29 13 * * *",
         timezone_note: "Trigger Beijing 21:29 = UTC 13:29; Feishu send waits until Beijing 21:30 if ready early.",
       });
@@ -511,32 +511,42 @@ function htmlResponse(html, status = 200, headers = {}) {
 
 function renderHomePage(archives) {
   const safeArchives = Array.isArray(archives) ? archives.filter((archive) => archive && archive.date) : [];
-  const cards = flattenArchiveCards(safeArchives);
+  const allCards = flattenArchiveCards(safeArchives);
+  const windowArchives = safeArchives.slice(0, 30);
+  const windowCards = flattenArchiveCards(windowArchives);
   const latestDate = safeArchives[0]?.date || formatDateKey(new Date());
   const review = buildPeriodReview(safeArchives, 30);
   const latestArchive = safeArchives[0];
-  const latestSummary = latestArchive ? dailyPageSummary(latestArchive) : "每天把 AI HOT 的精选内容整理成清爽日报，帮你快速扫过模型、产品、论文和行业变化。";
-  const typeSummary = dailyPageCategories(cards).slice(0, 7);
-  const latestCards = Array.isArray(latestArchive?.cards) ? latestArchive.cards.slice(0, 4) : [];
-  const sourceCount = new Set(cards.map((card) => card.source).filter(Boolean)).size;
-  const paperCount = cards.filter((card) => card.knowledge?.isPaper === "是" || /论文/.test(cardType(card))).length;
-  const toolCount = cards.filter((card) => cardType(card) === "工具/项目候选").length;
-  const sourceRanks = topSourceCounts(cards, 5);
+  const latestSummary = latestArchive ? dailyPageSummary(latestArchive) : "日报生成后会展示当天卡片数、类型、来源和事实摘录。";
+  const latestCards = Array.isArray(latestArchive?.cards)
+    ? latestArchive.cards.map((card) => ({ ...card, archiveDate: latestDate }))
+    : [];
+  const typeSummary = dailyPageCategories(latestCards).slice(0, 7);
+  const windowTypeSummary = dailyPageCategories(windowCards).slice(0, 7);
+  const sourceCount = new Set(latestCards.map((card) => card.source).filter(Boolean)).size;
+  const allSourceCount = new Set(allCards.map((card) => card.source).filter(Boolean)).size;
+  const paperCount = latestCards.filter((card) => card.knowledge?.isPaper === "是" || /论文/.test(cardType(card))).length;
+  const toolCount = latestCards.filter((card) => cardType(card) === "工具/项目候选").length;
+  const sourceRanks = topSourceCounts(latestCards, 5);
+  const windowSourceRanks = topSourceCounts(windowCards, 5);
   const latestHref = `/daily?date=${escapeAttribute(latestDate)}`;
   const latestCardCount = Array.isArray(latestArchive?.cards) ? latestArchive.cards.length : 0;
-  const signalCards = topScoredCards(cards, 4);
+  const signalCards = topScoredCards(latestCards, 4);
   const leadSignal = signalCards[0] || latestCards[0] || null;
-  const briefingCards = uniqueCards([leadSignal, ...signalCards, ...latestCards, ...cards]).slice(0, 8);
-  const leadSignalTitle = leadSignal?.title ? compactPageText(leadSignal.title, 42) : "等待高价值线索";
+  const briefingCards = uniqueCards([leadSignal, ...signalCards, ...latestCards]).slice(0, 8);
+  const leadSignalTitle = leadSignal?.title ? compactPageText(leadSignal.title, 42) : "等待今日线索";
   const leadSignalSource = leadSignal?.source ? compactPageText(leadSignal.source, 28) : "AI HOT";
   const leadSignalFact = leadSignal
     ? compactPageText(leadSignal.knowledge?.fact || leadSignal.summary || "打开最新归档查看完整条目。", 96)
-    : "当日报生成后，这里会按上游分数和归档时间给出第一条值得追踪的线索。";
+    : "当日报生成后，这里会按上游分数和发布时间显示第一条卡片。";
   const topCategory = typeSummary[0]?.name || "知识卡片";
   const topSource = sourceRanks[0]?.name || "AI HOT";
   const heroBrief = latestArchive
-    ? `今日 ${latestCardCount} 张卡片，主线集中在 ${typeSummary.slice(0, 3).map((item) => item.name).join("、") || topCategory}。`
-    : "日报生成后会把当天值得先看的内容放在这里。";
+    ? `今日 ${latestCardCount} 张卡片，类型集中在 ${typeSummary.slice(0, 3).map((item) => item.name).join("、") || topCategory}。`
+    : "日报生成后会把当天卡片、类型和来源放在这里。";
+  const heroLeadText = latestArchive
+    ? `最新归档 ${latestDate}，${latestCardCount} 张卡片。今日最多的是 ${topCategory}，高频来源是 ${topSource}；近 30 天已沉淀 ${windowCards.length} 张卡片。`
+    : "日报生成后，首页会按日期、类型、来源和分数排序展示真实归档内容。";
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -556,7 +566,7 @@ function renderHomePage(archives) {
           <span>AI HOT</span>
           <span>情报台</span>
         </h1>
-        <p class="heroLead">${escapeHtml(latestDate)} 已沉淀 ${latestCardCount} 张新卡片。先看今日主线、优先线索和最近节奏，再进入知识库、阶段复盘或单日归档继续追踪。</p>
+        <p class="heroLead">${escapeHtml(heroLeadText)}</p>
         <div class="heroActionBar">
           <a class="primaryLink" href="/library">进入知识库</a>
           <a class="navButton" href="/review?days=30">查看阶段复盘</a>
@@ -564,8 +574,8 @@ function renderHomePage(archives) {
         </div>
         <div class="heroMicroStats heroCapsules" aria-label="归档状态">
           <span><b>${safeArchives.length}</b> 天归档</span>
-          <span><b>${cards.length}</b> 张卡片</span>
-          <span><b>${sourceCount}</b> 个来源</span>
+          <span><b>${allCards.length}</b> 张卡片</span>
+          <span><b>${allSourceCount}</b> 个来源</span>
         </div>
       </div>
       ${renderHomeHeroBrief({
@@ -607,11 +617,19 @@ function renderHomePage(archives) {
       sourceRanks,
     })}
 
+    ${renderHomeControlCenter({
+      archives: windowArchives,
+      cards: windowCards,
+      typeSummary: windowTypeSummary,
+      sourceRanks: windowSourceRanks,
+      review,
+    })}
+
     <section class="homeRouteGallery" aria-label="阅读入口">
       <a class="routePane routePrimary" href="/library">
         <span>知识库</span>
         <strong>进入知识库</strong>
-        <p>${cards.length} 张卡片，按关键词、来源、类型和日期找回具体内容。</p>
+        <p>${allCards.length} 张卡片，按关键词、来源、类型和日期找回具体内容。</p>
       </a>
       <a class="routePane" href="/review?days=30">
         <span>阶段复盘</span>
@@ -719,7 +737,7 @@ function renderLibraryPage(archives, url) {
       <div class="roleCard">
         <span>筛选</span>
         <strong>筛论文与工具</strong>
-        <p>按论文、工具、模型、行业观察筛选，减少阅读噪音。</p>
+        <p>按论文、工具、模型、行业观察筛选，保留事实摘录和原文入口。</p>
       </div>
       <div class="roleCard">
         <span>定位</span>
@@ -835,7 +853,7 @@ function renderReviewPage(archives, url) {
     <section class="pageAtlas reviewAtlas" aria-label="周期趋势">
       <div class="atlasLead">
         <span>周期趋势</span>
-        <h2>先看密度，再看方向</h2>
+        <h2>归档量、类型和来源</h2>
         <p>最近 ${review.daysCovered} 天共 ${review.cardCount} 张卡片，趋势图和类型分布用来决定下一轮阅读顺序。</p>
       </div>
       <div class="atlasPanel atlasTrend">
@@ -964,13 +982,13 @@ function countArchiveCards(archives) {
 function topSourceCounts(cards, limit) {
   const counts = new Map();
   for (const card of cards || []) {
-    const source = compactPageText(card.source || "未知来源", 32);
+    const source = String(card.source || "未知来源").trim() || "未知来源";
     counts.set(source, (counts.get(source) || 0) + 1);
   }
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
-    .map(([name, count]) => ({ name, count }));
+    .map(([name, count]) => ({ name: compactPageText(name, 32), count }));
 }
 
 function librarySourceOptions(cards) {
@@ -1356,13 +1374,13 @@ function renderHomeHeroBrief({ date, latestHref, leadSignalTitle, leadSignalFact
       <p>${escapeHtml(heroBrief)}</p>
     </div>
     <a class="heroBriefLead" href="${latestHref}">
-      <span>今日先读</span>
+      <span>分数靠前</span>
       <strong>${escapeHtml(leadSignalTitle)}</strong>
       <p>${escapeHtml(leadSignalFact)}</p>
       <em>${escapeHtml(leadSignalSource)}</em>
     </a>
     <div class="heroBriefFacts" aria-label="归档要点">
-      <p><span>主线</span><b>${escapeHtml(topCategory)}</b></p>
+      <p><span>类型</span><b>${escapeHtml(topCategory)}</b></p>
       <p><span>高频来源</span><b>${escapeHtml(compactPageText(topSource, 22))}</b></p>
     </div>
   </aside>`;
@@ -1372,16 +1390,16 @@ function renderHomeTodayBoard({ date, latestHref, latestArchive, cards, latestSu
   const list = Array.isArray(cards) ? cards.filter((card) => card && card.title).slice(0, 4) : [];
   const lead = list[0] || null;
   const supporting = list.slice(1, 4);
-  const summary = latestArchive ? latestSummary : "日报生成后会展示当天主线、代表条目和继续追踪入口。";
+  const summary = latestArchive ? latestSummary : "日报生成后会展示当天卡片、类型和来源。";
   return `<section class="homeTodayBoard" aria-label="今日判断">
     <div class="todayBoardHeader">
       <span>${escapeHtml(date || "最新归档")}</span>
-      <h2>今天先判断三件事</h2>
+      <h2>今日卡片概览</h2>
       <p>${escapeHtml(compactPageText(summary, 120))}</p>
     </div>
     <div class="todayBoardGrid">
       ${renderHomeTodayLead(lead, latestHref)}
-      <div class="todayQueue" aria-label="代表线索">
+      <div class="todayQueue" aria-label="今日卡片">
         ${supporting.length ? supporting.map((card) => renderHomeTodayQueueCard(card, latestHref)).join("") : renderEmptyBriefPick()}
       </div>
       <aside class="todayFacts" aria-label="内容范围">
@@ -1396,9 +1414,67 @@ function renderHomeTodayBoard({ date, latestHref, latestArchive, cards, latestSu
   </section>`;
 }
 
-function renderMobileHomeFlow({ date, latestHref, latestArchive, latestSummary, cards, archives, typeSummary, sourceRanks, paperCount, toolCount, sourceCount }) {
-  const list = uniqueCards(cards || []).slice(0, 5);
-  const summary = latestArchive ? latestSummary : "日报生成后会展示当天主线、代表条目和继续追踪入口。";
+function renderHomeControlCenter({ archives, cards, typeSummary, sourceRanks, review }) {
+  const safeArchives = Array.isArray(archives) ? archives.filter((archive) => archive && archive.date) : [];
+  const safeCards = Array.isArray(cards) ? cards : [];
+  const types = Array.isArray(typeSummary) ? typeSummary.filter((item) => item && item.name) : [];
+  const sources = Array.isArray(sourceRanks) ? sourceRanks.filter((item) => item && item.name) : [];
+  const topTypes = types.slice(0, 3).map((item) => item.name).join("、") || "等待归档";
+  const topSources = sources.slice(0, 2).map((item) => item.name).join("、") || "等待来源";
+  return `<section class="homeControlCenter" aria-label="近 30 天运行概览">
+    <div class="controlIntro">
+      <span>近 30 天</span>
+      <h2>运行概览</h2>
+      <p>${safeArchives.length} 天、${safeCards.length} 张卡片。高频类型为 ${escapeHtml(topTypes)}，来源集中在 ${escapeHtml(topSources)}。</p>
+    </div>
+    <article class="controlPanel cadencePanel">
+      <div class="controlPanelHead">
+        <span>最近 14 天</span>
+        <h3>归档节奏</h3>
+        <p>每根柱子对应单日卡片数，点击可进入当天归档。</p>
+      </div>
+      ${renderHomeCadenceChart(safeArchives.slice(0, 14))}
+    </article>
+    <article class="controlPanel">
+      <div class="controlPanelHead">
+        <span>${review.daysCovered || safeArchives.length} 天窗口</span>
+        <h3>类型分布</h3>
+      </div>
+      ${renderTypeSegments(types)}
+    </article>
+    <article class="controlPanel">
+      <div class="controlPanelHead">
+        <span>${sources.length} 个主要来源</span>
+        <h3>来源分布</h3>
+      </div>
+      ${renderSourceList(sources)}
+    </article>
+  </section>`;
+}
+
+function renderHomeCadenceChart(archives) {
+  const list = [...(archives || [])].filter((archive) => archive?.date).reverse();
+  if (!list.length) return `<p class="muted small">暂无归档节奏。</p>`;
+  const counts = list.map((archive) => (Array.isArray(archive.cards) ? archive.cards.length : 0));
+  const max = Math.max(...counts, 1);
+  return `<div class="controlCadence">${list
+    .map((archive, index) => {
+      const count = counts[index];
+      const height = Math.max(16, Math.round((count / max) * 100));
+      const topType = dailyPageCategories(archive.cards || [])[0]?.name || "知识卡片";
+      return `<a href="/daily?date=${escapeAttribute(archive.date)}" style="--h:${height}%">
+        <i aria-hidden="true"></i>
+        <strong>${count}</strong>
+        <span>${escapeHtml(String(archive.date || "").slice(5))}</span>
+        <em>${escapeHtml(compactPageText(topType, 8))}</em>
+      </a>`;
+    })
+    .join("")}</div>`;
+}
+
+function renderMobileHomeFlow({ date, latestHref, latestArchive, latestSummary, cards, paperCount, sourceCount }) {
+  const list = uniqueCards(cards || []).slice(0, 3);
+  const summary = latestArchive ? latestSummary : "日报生成后会展示当天卡片、类型和来源。";
   return `<section class="mobileOnly mobileHomeFlow" aria-label="手机端今日信息流">
     <article class="mobileTodayCard">
       <div class="mobileSectionHead">
@@ -1413,18 +1489,11 @@ function renderMobileHomeFlow({ date, latestHref, latestArchive, latestSummary, 
       </div>
       ${renderMobileSignalStack(list, latestHref, 3)}
     </article>
-    ${renderMobileTopicRail(typeSummary, "/library")}
-    <section class="mobileDataBoard" aria-label="移动端数据概览">
-      <article class="mobileDataCard">
-        <div class="mobileMiniHead"><span>归档节奏</span><b>近 14 天</b></div>
-        ${renderMobileCadenceBars((archives || []).slice(0, 14))}
-      </article>
-      <article class="mobileDataCard">
-        <div class="mobileMiniHead"><span>内容结构</span><b>${toolCount} 个工具</b></div>
-        ${renderMobileTypeRows(typeSummary, 4)}
-      </article>
-    </section>
-    ${renderMobileSourceRows(sourceRanks, "高频来源")}
+    <nav class="mobileHomeEntrances" aria-label="移动端核心入口">
+      <a href="/library"><span>知识库</span><strong>搜索卡片</strong><p>关键词、类型、日期筛选。</p></a>
+      <a href="/review?days=30"><span>复盘</span><strong>看 30 天</strong><p>类型、来源、论文和工具池。</p></a>
+      <a href="${latestHref}"><span>日报</span><strong>最新归档</strong><p>${escapeHtml(date || "最新日期")} 的完整卡片。</p></a>
+    </nav>
   </section>`;
 }
 
@@ -1449,7 +1518,7 @@ function renderMobileReviewBrief({ review, archives, categories, sources, days }
   return `<section class="mobileOnly mobilePageBrief mobileReviewBrief" aria-label="手机端阶段复盘摘要">
     <div class="mobileSectionHead">
       <span>${days} 天窗口</span>
-      <strong>周期先看密度</strong>
+      <strong>${days} 天内容概况</strong>
       <p>${escapeHtml(compactPageText(review.summary, 96))}</p>
     </div>
     <div class="mobileStatStrip" aria-label="阶段复盘概况">
@@ -1492,7 +1561,7 @@ function renderMobileDailyBrief({ archive, categories, sources, priorityReads, s
 function renderMobileSignalStack(cards, fallbackHref, limit = 3) {
   const list = uniqueCards(cards || []).slice(0, limit);
   if (!list.length) {
-    return `<div class="mobileSignalStack"><article class="mobileSignalRow"><span>等待归档</span><strong>暂无今日主线</strong><p>下一次日报生成后会补充真实卡片。</p></article></div>`;
+    return `<div class="mobileSignalStack"><article class="mobileSignalRow"><span>等待归档</span><strong>暂无今日卡片</strong><p>下一次日报生成后会补充卡片数、类型和来源。</p></article></div>`;
   }
   return `<div class="mobileSignalStack">${list
     .map((card, index) => {
@@ -1558,8 +1627,8 @@ function renderHomeTodayLead(card, fallbackHref) {
   if (!card) {
     return `<article class="todayLead emptyBriefPick">
       <span>等待归档</span>
-      <strong>暂无今日主线</strong>
-      <p>日报生成后会把当天最值得先读的条目放在这里。</p>
+      <strong>暂无今日卡片</strong>
+      <p>日报生成后会把当天卡片放在这里。</p>
     </article>`;
   }
   const href = homeCardHref(card, fallbackHref);
@@ -1780,9 +1849,9 @@ function cardActionLabel(card) {
   const text = `${type} ${card?.knowledge?.useCase || ""} ${card?.knowledge?.nextStep || ""}`;
   if (/论文|复现|实验|方法/.test(text)) return "可复现";
   if (/工具|项目|产品|试用|API|开源/.test(text)) return "可试用";
-  if (/模型|发布|能力|API/.test(text)) return "值得跟进";
+  if (/模型|发布|能力|API/.test(text)) return "模型发布";
   if (/融资|行业|监管|公司/.test(text)) return "行业观察";
-  return "先读";
+  return "今日卡片";
 }
 
 function topScoredCards(cards, limit) {
@@ -1905,8 +1974,8 @@ function renderDailyPage(archive, message, archives = []) {
     <section class="dailyReadOrder" aria-label="推荐阅读顺序">
       <div>
         <span>优先阅读</span>
-        <h2>先看三条代表线索</h2>
-        <p>按上游分数、时间和归档顺序挑出当天最适合先读的内容，完整卡片仍在下面保留。</p>
+        <h2>按分数查看三条卡片</h2>
+        <p>按上游分数优先排序，同分再按发布时间排序；完整卡片仍在下面保留。</p>
       </div>
       <div class="readOrderList">
         ${renderDailyReadOrder(priorityReads)}
@@ -2036,7 +2105,7 @@ function renderKnowledgeCard(card, options = {}) {
 function dailyPageSummary(archive) {
   const cards = Array.isArray(archive.cards) ? archive.cards : [];
   const categories = dailyPageCategories(cards).slice(0, 3).map((item) => item.name).join("、");
-  const first = cards[0]?.title ? `优先看「${compactPageText(cards[0].title, 30)}」` : "";
+  const first = cards[0]?.title ? `首条归档「${compactPageText(cards[0].title, 30)}」` : "";
   const paperCount = cards.filter((card) => card.knowledge?.isPaper === "是" || card.knowledge?.type === "论文候选").length;
   const toolCount = cards.filter((card) => card.knowledge?.type === "工具/项目候选").length;
   const parts = [];
@@ -9051,6 +9120,325 @@ function dailyPageCSS() {
       .mobileTopicRail a:active span,
       .navLinks a:active {
         color: var(--accent-ink) !important;
+      }
+    }
+    /* Responsive content hierarchy: desktop control center, tablet two-column, mobile content-first. */
+    .homeControlCenter {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.34fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr);
+      gap: 14px;
+      align-items: stretch;
+      margin: 0 0 clamp(20px, 2.8vw, 34px);
+    }
+    .controlIntro,
+    .controlPanel {
+      min-width: 0;
+      border: 1px solid color-mix(in oklch, var(--line) 76%, white);
+      border-radius: 16px;
+      background: color-mix(in oklch, white 82%, transparent);
+      box-shadow: 0 8px 18px color-mix(in oklch, oklch(0.32 0.05 230) 8%, transparent);
+    }
+    .controlIntro {
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+      align-content: center;
+    }
+    .controlIntro span,
+    .controlPanelHead span,
+    .mobileHomeEntrances span {
+      width: fit-content;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--accent-soft) 86%, white);
+      color: color-mix(in oklch, var(--accent) 72%, black);
+      padding: 0 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 780;
+    }
+    .controlIntro h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(28px, 2.8vw, 38px);
+      line-height: 1.08;
+    }
+    .controlIntro p,
+    .controlPanelHead p,
+    .mobileHomeEntrances p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      text-wrap: pretty;
+    }
+    .controlPanel {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      transition: border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+    .controlPanelHead {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .controlPanelHead h3 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .controlPanelHead p {
+      font-size: 13px;
+    }
+    .controlCadence {
+      min-height: 210px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+      gap: 8px;
+      align-items: end;
+      padding-top: 8px;
+    }
+    .controlCadence a {
+      min-width: 0;
+      height: 100%;
+      min-height: 186px;
+      display: grid;
+      grid-template-rows: minmax(82px, 1fr) auto auto auto;
+      gap: 6px;
+      align-items: end;
+      color: var(--ink);
+      text-decoration: none;
+      font-variant-numeric: tabular-nums;
+    }
+    .controlCadence i {
+      width: 100%;
+      height: var(--h);
+      min-height: 18px;
+      border-radius: 999px 999px 6px 6px;
+      background: linear-gradient(180deg, color-mix(in oklch, var(--accent) 78%, white), color-mix(in oklch, var(--accent-3) 70%, white));
+      transition: height 180ms ease, filter 180ms ease, transform 180ms ease;
+    }
+    .controlCadence strong {
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1;
+      text-align: center;
+    }
+    .controlCadence span,
+    .controlCadence em {
+      min-width: 0;
+      color: var(--faint);
+      font-size: 10px;
+      line-height: 1.1;
+      font-style: normal;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .controlPanel .typeSegments,
+    .controlPanel .sourceList {
+      margin-top: 2px;
+    }
+    .controlPanel:hover,
+    .controlPanel:focus-within,
+    .controlCadence a:hover i,
+    .controlCadence a:focus-visible i {
+      border-color: var(--accent-line);
+    }
+    .controlCadence a:hover i,
+    .controlCadence a:focus-visible i {
+      filter: saturate(1.12);
+      transform: translateY(-2px);
+    }
+    .mobileHomeEntrances {
+      display: grid;
+      gap: 9px;
+    }
+    .mobileHomeEntrances a {
+      min-width: 0;
+      min-height: 92px;
+      border: 1px solid color-mix(in oklch, var(--line) 78%, white);
+      border-radius: 14px;
+      background: color-mix(in oklch, white 84%, transparent);
+      color: var(--ink);
+      padding: 13px;
+      display: grid;
+      gap: 7px;
+      text-decoration: none;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .mobileHomeEntrances strong {
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.26;
+    }
+    .mobileHomeEntrances p {
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .homeControlCenter {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .controlIntro,
+      .cadencePanel {
+        grid-column: 1 / -1;
+      }
+      .controlCadence {
+        min-height: 170px;
+        grid-template-columns: repeat(14, minmax(22px, 1fr));
+      }
+      .controlCadence a {
+        min-height: 150px;
+      }
+      .finderTop {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      .finderTop .search {
+        grid-column: 1 / -1;
+      }
+      .grid,
+      .reviewSampleGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      .reviewDashboard,
+      .pageAtlas,
+      .dailyReadOrder {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      .dailyReadOrder > div:first-child,
+      .readOrderList {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 760px) {
+      .shell,
+      .homeShell {
+        width: 100%;
+        max-width: 430px;
+        padding: 10px 14px 28px !important;
+      }
+      .siteNav {
+        position: sticky !important;
+        top: 8px !important;
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 0 12px !important;
+        padding: 6px !important;
+        border-radius: 16px !important;
+        overflow: visible !important;
+      }
+      .brandMark,
+      .navStatus {
+        display: none !important;
+      }
+      .navLinks {
+        position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 5px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      .navLinks a {
+        min-width: 0 !important;
+        min-height: 42px !important;
+        padding: 0 4px !important;
+        border-radius: 12px !important;
+        justify-content: center !important;
+        background: color-mix(in oklch, white 70%, transparent);
+        color: var(--muted);
+        font-size: 12px !important;
+        line-height: 1 !important;
+        white-space: nowrap;
+      }
+      .navLinks a.active {
+        color: var(--accent-ink) !important;
+        background: color-mix(in oklch, var(--accent-soft) 88%, white) !important;
+      }
+      .homeArtHero {
+        display: none !important;
+      }
+      .mobileHomeFlow {
+        margin-top: 4px !important;
+      }
+      .mobileHomeFlow + .homeTodayBoard,
+      .homeControlCenter,
+      .featureScene,
+      .homeHeroBrief {
+        display: none !important;
+      }
+      .featureHero {
+        min-height: auto !important;
+        margin-inline: -14px !important;
+        padding: 16px 18px 18px !important;
+      }
+      .featureHero h1 {
+        max-width: 100% !important;
+      }
+      .featureHero .muted {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden !important;
+      }
+      .mobileTopicRail {
+        margin-top: 2px;
+      }
+      .mobilePageBrief .mobileSourceCard,
+      .mobileReviewBrief .mobileDataBoard,
+      .mobileReviewBrief .mobileSourceCard,
+      .mobileDailyBrief .mobileSourceCard {
+        display: none !important;
+      }
+      .mobileSignalStack {
+        margin-top: 10px !important;
+      }
+      .mobileSignalRow:nth-child(n+4) {
+        display: none !important;
+      }
+      .finderPanel {
+        margin-top: 10px !important;
+      }
+      .dailyTools {
+        display: none !important;
+      }
+      .sourceLink {
+        min-height: 40px !important;
+        height: 40px !important;
+      }
+      #libraryFinder,
+      #cardGrid {
+        scroll-margin-top: 76px;
+      }
+      .card .type,
+      .card .priority,
+      .dateBadge {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .meta {
+        min-width: 0;
+      }
+      .meta span,
+      .meta a {
+        min-width: 0;
       }
     }
     @media (hover: hover) and (pointer: fine) {
