@@ -7129,6 +7129,505 @@ function dailyPageCSS() {
         box-shadow: var(--focus-ring);
       }
     }
+    /* Mobile first cleanup: reduce hero density and bring real content forward. */
+    @media (max-width: 760px) {
+      body {
+        background:
+          linear-gradient(180deg, oklch(0.985 0.005 214), oklch(0.992 0.003 220) 46%, oklch(0.986 0.006 190));
+      }
+      .shell,
+      .homeShell {
+        width: calc(100vw - 20px);
+        padding: 10px 0 36px;
+      }
+      .siteNav {
+        position: sticky;
+        top: 8px;
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) !important;
+        align-items: center !important;
+        gap: 8px !important;
+        min-height: 52px !important;
+        margin-bottom: 10px;
+        padding: 6px 7px 6px 10px !important;
+        border-radius: 18px;
+        background: color-mix(in oklch, white 90%, transparent);
+        box-shadow: 0 8px 18px color-mix(in oklch, oklch(0.42 0.05 220) 10%, transparent);
+      }
+      .brandMark {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        min-height: 40px;
+        padding: 0 4px;
+        font-size: 15px;
+      }
+      .navStatus {
+        display: none !important;
+      }
+      .navLinks {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 3px !important;
+        width: 100%;
+        min-width: 0;
+        overflow: visible !important;
+      }
+      .navLinks a {
+        min-width: 0;
+        min-height: 40px;
+        justify-content: center;
+        padding: 0 2px !important;
+        border-radius: 999px;
+        font-size: 11.5px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .navLinks a.active {
+        background: color-mix(in oklch, var(--accent-soft) 84%, white);
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 24%, transparent);
+      }
+      .homeArtHero,
+      .featureHero {
+        min-height: auto !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+        padding: 16px 0 14px !important;
+      }
+      .homeArtHero::before,
+      .featureHero::before {
+        inset: -10px calc(50% - 50vw) -12px !important;
+        background:
+          radial-gradient(circle at 86% 14%, color-mix(in oklch, var(--accent) 12%, transparent), transparent 16rem),
+          linear-gradient(132deg, oklch(0.94 0.026 188), oklch(0.982 0.006 218) 58%, oklch(0.93 0.028 226));
+        bottom: 0 !important;
+      }
+      .homeArtHero::after {
+        display: none;
+      }
+      .homeArtHero::before,
+      .featureHero::before {
+        bottom: 0 !important;
+      }
+      .heroCopyBlock,
+      .featureHeroCopy {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .heroKicker,
+      .sectionLabel {
+        margin-bottom: 7px;
+        font-size: 12px;
+        line-height: 1.3;
+      }
+      .heroCopyBlock h1,
+      .featureHero h1 {
+        max-width: 100% !important;
+        font-size: clamp(27px, 7.1vw, 32px) !important;
+        line-height: 1.12 !important;
+        text-wrap: balance;
+      }
+      .heroHeadline span {
+        display: inline;
+        white-space: normal;
+      }
+      .heroHeadline span + span::before {
+        content: " ";
+      }
+      .heroLead,
+      .featureHero .muted {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 9px !important;
+        color: color-mix(in oklch, var(--ink) 70%, white);
+        font-size: 14.5px !important;
+        line-height: 1.58 !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .heroActionBar {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        gap: 8px !important;
+        margin-top: 14px !important;
+      }
+      .heroActionBar .primaryLink,
+      .heroActionBar .navButton {
+        width: 100%;
+        min-width: 0;
+        min-height: 42px !important;
+        justify-content: center;
+        padding: 0 10px !important;
+        font-size: 13px;
+      }
+      .heroActionBar .primaryLink {
+        grid-column: auto !important;
+      }
+      .heroActionBar .navButton:nth-of-type(n+3),
+      .heroActionBar a:nth-child(n+3) {
+        display: none;
+      }
+      .heroCapsules,
+      .stats {
+        gap: 6px !important;
+        margin-top: 11px;
+      }
+      .heroCapsules span,
+      .stats span {
+        min-height: 30px !important;
+        padding: 0 9px !important;
+        font-size: 12px;
+      }
+      .heroCapsules span:nth-child(n+3),
+      .stats span:nth-child(n+3) {
+        display: none;
+      }
+      .heroPortalScene,
+      .featureScene {
+        display: none !important;
+      }
+      .homeBriefingDeck,
+      .homeVisualSummary,
+      .homeRouteGallery,
+      .pageAtlas,
+      .finderPanel,
+      .dailyReadOrder,
+      .dailyTools,
+      .toolbar,
+      .reviewPanel,
+      .reviewDashboard,
+      .reviewTimeline,
+      .reviewSamples,
+      .grid,
+      .reviewSampleGrid {
+        margin-top: 12px;
+      }
+      .homeBriefingDeck {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+          "head"
+          "lead"
+          "picks" !important;
+        gap: 10px !important;
+        margin-top: 14px !important;
+        margin-bottom: 14px;
+      }
+      .briefingHeader {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+        padding: 0 2px;
+      }
+      .briefingHeader h2,
+      .channelIntro h2,
+      .riverIntro h2,
+      .signalNarrative h2,
+      .dailyReadOrder h2 {
+        font-size: clamp(22px, 6vw, 28px) !important;
+        line-height: 1.16;
+      }
+      .briefingHeader p,
+      .channelIntro p,
+      .riverIntro p,
+      .signalNarrative p,
+      .dailyReadOrder > div:first-child p {
+        font-size: 14px;
+        line-height: 1.58;
+      }
+      .briefLead {
+        min-height: 184px !important;
+        padding: 16px !important;
+        border-radius: 16px;
+        align-content: end;
+      }
+      .briefLead strong {
+        max-width: 100%;
+        font-size: clamp(22px, 6vw, 26px) !important;
+        line-height: 1.14;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .briefLead p,
+      .briefPick p,
+      .riverDay p,
+      .channelCard p,
+      .signalRow p,
+      .card .fact,
+      .card .topics,
+      .readOrderItem p {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .briefLead p {
+        -webkit-line-clamp: 2;
+      }
+      .briefPicks {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px;
+      }
+      .briefPick {
+        min-height: 132px !important;
+        padding: 14px !important;
+      }
+      .briefPick:nth-child(n+3) {
+        display: none;
+      }
+      .briefPick strong,
+      .signalRow strong,
+      .readOrderItem strong,
+      .card h2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .briefPick p,
+      .signalRow p,
+      .readOrderItem p,
+      .card .fact {
+        -webkit-line-clamp: 3;
+      }
+      .briefStreamPanel,
+      .homeChannelMatrix,
+      .homeSignalBoard,
+      .homeDailyRiver,
+      .homeContentRibbon,
+      .homeFutureRibbon,
+      .rolePanel,
+      .reviewIdentity,
+      .libraryAtlas,
+      .dailyAtlas {
+        display: none !important;
+      }
+      .homeVisualSummary {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 14px;
+      }
+      .homeVisualSummary .visualTile:nth-child(n+3) {
+        display: none;
+      }
+      .visualTile,
+      .routePane,
+      .finderPanel,
+      .dailyReadOrder,
+      .reviewPanel,
+      .reviewGlassBlock,
+      .card {
+        border-radius: 16px !important;
+      }
+      .visualTile {
+        min-height: auto !important;
+        padding: 16px !important;
+      }
+      .trendTile .trendArea svg {
+        height: 138px !important;
+      }
+      .homeRouteGallery {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 9px !important;
+      }
+      .routePane {
+        min-height: 126px !important;
+        padding: 16px !important;
+      }
+      .routePane p {
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .finderPanel {
+        position: static !important;
+        padding: 12px !important;
+        margin-bottom: 12px;
+      }
+      .finderTop,
+      .toolbar {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+      }
+      #sourceSelect,
+      #startDate,
+      #endDate {
+        display: none;
+      }
+      .search input,
+      select,
+      input[type="date"],
+      #clearFilters,
+      .segments button,
+      .dateRail button {
+        min-height: 42px;
+        height: 42px;
+        font-size: 14px;
+      }
+      .dateRail {
+        padding-top: 8px;
+      }
+      .grid,
+      .reviewSampleGrid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+      }
+      .card {
+        min-height: auto !important;
+        padding: 15px !important;
+      }
+      .card h2 {
+        font-size: 16.5px !important;
+        line-height: 1.42 !important;
+      }
+      .card dl {
+        display: none !important;
+      }
+      .card footer {
+        margin-top: 12px;
+      }
+      .pageAtlas {
+        grid-template-columns: minmax(0, 1fr) !important;
+        padding: 16px !important;
+      }
+      .dailyReadOrder {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+        padding: 16px !important;
+      }
+      .dailyReadOrder > div:first-child p {
+        display: none;
+      }
+      .readOrderList {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+      }
+      .readOrderItem {
+        min-height: auto !important;
+        padding: 13px !important;
+      }
+      .reviewDashboard,
+      .reviewTimeline,
+      .reviewSamples {
+        gap: 10px !important;
+      }
+    }
+    @media (min-width: 761px) and (max-width: 820px) {
+      .heroPortalScene,
+      .featureScene {
+        display: none !important;
+      }
+      .homeArtHero,
+      .featureHero {
+        min-height: auto !important;
+        padding: 34px 0 30px !important;
+      }
+      .heroActionBar {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      .heroActionBar .primaryLink {
+        grid-column: auto !important;
+      }
+      .heroActionBar a:nth-child(n+3),
+      .heroCapsules span:nth-child(n+3) {
+        display: none !important;
+      }
+    }
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .siteNav {
+        top: 10px;
+        border-radius: 22px;
+      }
+      .featureHero,
+      .homeArtHero {
+        gap: 20px !important;
+        padding-top: 24px !important;
+        padding-bottom: 24px !important;
+      }
+      .homeArtHero::after {
+        display: none;
+      }
+      .homeArtHero::before,
+      .featureHero::before {
+        bottom: 0 !important;
+      }
+      .featureScene {
+        max-height: 280px;
+      }
+      .homeBriefingDeck,
+      .homeVisualSummary,
+      .homeChannelMatrix,
+      .homeDailyRiver,
+      .homeFutureRibbon {
+        gap: 14px;
+      }
+      .homeBriefingDeck {
+        margin-top: 18px !important;
+      }
+      .briefLead {
+        min-height: 260px;
+      }
+      .routePane {
+        min-height: 170px;
+      }
+    }
+    @media (min-width: 1041px) {
+      .homeArtHero {
+        min-height: min(500px, calc(100dvh - 116px));
+        padding-top: 28px;
+        padding-bottom: 24px;
+      }
+      .homeArtHero::after {
+        display: none;
+      }
+      .featureHero {
+        min-height: min(480px, calc(100dvh - 116px));
+        padding-top: 26px;
+        padding-bottom: 24px;
+      }
+      .heroPortalScene {
+        min-height: 370px;
+      }
+      .featureScene {
+        min-height: 310px;
+      }
+      .briefLead {
+        min-height: 292px;
+      }
+      .briefLead strong {
+        font-size: clamp(26px, 2.6vw, 38px);
+        line-height: 1.12;
+      }
+      .homeBriefingDeck,
+      .homeVisualSummary,
+      .homeSignalBoard,
+      .homeRouteGallery,
+      .homeFutureRibbon {
+        margin-bottom: 16px;
+      }
+      .homeBriefingDeck {
+        margin-top: 20px !important;
+      }
+      .routePane:hover,
+      .routePane:focus-visible,
+      .briefLead:hover,
+      .briefLead:focus-visible,
+      .briefPick:hover,
+      .briefPick:focus-visible,
+      .channelCard:hover,
+      .channelCard:focus-visible,
+      .riverDay:hover,
+      .riverDay:focus-visible,
+      .card:hover,
+      .card:focus-within {
+        border-color: color-mix(in oklch, var(--accent) 44%, var(--line));
+        background:
+          radial-gradient(circle at 86% 10%, color-mix(in oklch, var(--accent) 13%, transparent), transparent 13rem),
+          color-mix(in oklch, white 86%, var(--accent-soft));
+      }
+    }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
       .siteNav, .top, .homeIntentCopy, .homePrinciples, .homeRoadmap, .homeShowcase, .homePulse, .pulseMetric, .pulseChart, .homeInsight, .homeLatest, .latestSignal, .portalTile, .homeMedia, .dailyTools, .emptyPanel, .reviewPanel, .finderPanel, .card, .commandPanel, .pageAtlas, .topicFocus, .dailyRhythm, .portalWindow, .floatEntry, .visualTile, .homeBriefingDeck, .briefLead, .briefPick, .briefStreamPanel, .homeChannelMatrix, .channelCard, .homeDailyRiver, .riverDay, .homeContentRibbon, .homeSignalBoard, .dailyReadOrder, .routePane, .homeFutureRibbon, .featureScene {
         background: var(--surface-strong);
