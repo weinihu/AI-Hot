@@ -32,7 +32,7 @@ import {
 const SITE_SNAPSHOT_KV_KEY = "site_snapshot:v1";
 const PUBLIC_BROWSER_CACHE_SECONDS = 60;
 const PUBLIC_EDGE_CACHE_SECONDS = 10 * 60;
-const PUBLIC_HTML_CACHE_VERSION = "2026-06-08-portal-curated-layout";
+const PUBLIC_HTML_CACHE_VERSION = "2026-06-08-portal-refined-density";
 
 export default {
   async fetch(request, env, ctx) {
@@ -42,7 +42,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "aihot-feishu-briefing",
-        version: "2026-06-08-portal-curated-layout",
+        version: "2026-06-08-portal-refined-density",
         cron: "29 13 * * *",
         timezone_note: "Trigger Beijing 21:29 = UTC 13:29; Feishu send waits until Beijing 21:30 if ready early.",
       });
@@ -97,10 +97,11 @@ export default {
 
     if (url.pathname === "/daily") {
       const date = url.searchParams.get("date") || "";
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return htmlResponse(renderDailyPage(null, "请选择有效日期。"), 400);
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return htmlResponse(renderDailyPage(null, "请选择有效日期。"), 400);
       return publicHtmlResponse(request, ctx, async () => {
         const archives = await getDailyArchives(env);
-        const archive = archives.find((item) => item.date === date) || null;
+        const targetDate = date || archives[0]?.date || "";
+        const archive = archives.find((item) => item.date === targetDate) || null;
         return renderDailyPage(archive, "", archives);
       });
     }
@@ -560,14 +561,14 @@ function renderHomePage(archives) {
 <body>
   <main class="shell homeShell">
     ${renderSiteNav("home", latestDate)}
-    <section class="homeArtHero" aria-label="AI HOT 知识入口">
+    <section class="homeArtHero" aria-label="AI HOT 每日归档与复盘工作台">
       <div class="heroCopyBlock">
-        <p class="heroKicker">AI HOT 知识入口</p>
+        <p class="heroKicker">每日归档与复盘工作台</p>
         <h1 class="heroHeadline">
           <span>AI HOT</span>
-          <span>情报台</span>
+          <span>每日归档</span>
         </h1>
-        <p class="heroLead">${escapeHtml(latestDate)} 已沉淀 ${latestCardCount} 张卡片。先看今日主线、优先线索和最近节奏，再进入知识库、阶段复盘或单日归档继续追踪。</p>
+        <p class="heroLead">更新至 ${escapeHtml(latestDate)}，已归档 ${safeArchives.length} 天、${cards.length} 张卡片，覆盖 ${sourceCount} 个来源。这里汇总今日重点、近 30 天方向和可检索入口。</p>
         <div class="heroActionBar">
           <a class="primaryLink" href="/library">进入知识库</a>
           <a class="navButton" href="/review?days=30">查看阶段复盘</a>
@@ -597,17 +598,17 @@ function renderHomePage(archives) {
           </div>
         </div>
         <a class="floatEntry floatDaily" href="${latestHref}">
-          <span>Daily</span>
+          <span>今日</span>
           <strong>每日重点</strong>
           <p>${escapeHtml(compactPageText(latestTitle, 42))}</p>
         </a>
         <a class="floatEntry floatLibrary" href="/library">
-          <span>Library</span>
-          <strong>知识沉淀</strong>
-          <p>${cards.length} 张卡片，按主题、来源和日期长期检索。</p>
+          <span>知识库</span>
+          <strong>检索卡片</strong>
+          <p>${cards.length} 张卡片，按标题、来源、类型和日期找回。</p>
         </a>
         <a class="floatEntry floatReview" href="/review?days=30">
-          <span>Review</span>
+          <span>复盘</span>
           <strong>趋势复盘</strong>
           <p>${escapeHtml(compactPageText(review.summary, 54))}</p>
         </a>
@@ -654,10 +655,10 @@ function renderHomePage(archives) {
 
     <section class="homeSignalBoard" aria-label="高价值线索">
       <div class="signalNarrative">
-        <span>Signal Board</span>
-        <h2>先追踪最有价值的一条线索</h2>
-        <p>当前优先级最高的是「${escapeHtml(leadSignalTitle)}」，来自 ${escapeHtml(leadSignalSource)}。${escapeHtml(leadSignalFact)}</p>
-        <a class="primaryLink" href="${leadSignalHref}">查看这条线索</a>
+        <span>优先阅读</span>
+        <h2>按分数和时间排出第一条</h2>
+        <p>当前排在前面的是「${escapeHtml(leadSignalTitle)}」，来自 ${escapeHtml(leadSignalSource)}。${escapeHtml(leadSignalFact)}</p>
+        <a class="primaryLink" href="${leadSignalHref}">查看优先条目</a>
       </div>
       <div class="signalQueue">
         ${renderHomeSignalQueue(signalCards)}
@@ -668,8 +669,8 @@ function renderHomePage(archives) {
 
     <section class="homeContentRibbon" aria-label="最新内容">
       <div class="ribbonIntro">
-        <span>Latest</span>
-        <h2>今天先看这些</h2>
+        <span>今日重点</span>
+        <h2>今天值得先读的条目</h2>
         <p>${escapeHtml(compactPageText(latestSummary, 88))}</p>
       </div>
       <div class="ribbonCards">
@@ -679,32 +680,32 @@ function renderHomePage(archives) {
 
     <section class="homeRouteGallery" aria-label="阅读入口">
       <a class="routePane routePrimary" href="/library">
-        <span>Library</span>
+        <span>知识库</span>
         <strong>进入知识库</strong>
         <p>按关键词、日期和类型找回具体内容。</p>
       </a>
       <a class="routePane" href="/review?days=30">
-        <span>Review</span>
+        <span>阶段复盘</span>
         <strong>看阶段复盘</strong>
-        <p>把多天内容压成趋势、论文池和工具池。</p>
+        <p>查看 7/30/90 天的方向、论文和来源变化。</p>
       </a>
       <a class="routePane" href="${latestHref}">
-        <span>Daily</span>
+        <span>单日归档</span>
         <strong>读最新日报</strong>
         <p>${escapeHtml(latestDate)}，${latestCardCount} 张卡片。</p>
       </a>
     </section>
 
-    <section class="homeFutureRibbon" aria-label="后续展望">
+    <section class="homeFutureRibbon" aria-label="可扩展入口">
       <div>
-        <span>Roadmap</span>
-        <h2>把 ${cards.length} 张卡片继续做成研究入口</h2>
+        <span>后续展望</span>
+        <h2>只有数据够用的方向才进入下一步</h2>
       </div>
       <div class="futureGrid">
-        ${renderFutureCard("论文池", `${paperCount} 条论文线索`, "按方法、任务和复现价值拆分阅读队列", 72)}
-        ${renderFutureCard("专题页", primaryTopics, "把反复出现的方向变成可分享的专题索引", 58)}
-        ${renderFutureCard("周报月报", `${safeArchives.length} 天历史`, "把每天的碎片压成适合汇报的周期视图", 44)}
-        ${renderFutureCard("语义检索", `${cards.length} 张卡片`, "用问题直接找答案，而不是只靠关键词", 36)}
+        ${renderFutureCard("论文池", `${paperCount} 条论文线索`, paperCount >= 12 ? "可按方法、任务和复现价值拆分阅读队列" : "继续积累论文条目后再拆分阅读队列", paperCount >= 12 ? "可整理" : "待积累")}
+        ${renderFutureCard("专题页", primaryTopics, review.topics.length >= 4 ? "反复出现的方向可整理成专题索引" : "等主题覆盖更多日期后再生成专题", review.topics.length >= 4 ? "候选" : "观察")}
+        ${renderFutureCard("周报月报", `${safeArchives.length} 天历史`, safeArchives.length >= 7 ? "归档天数已够生成周期视图" : "至少 7 天归档后再生成周期视图", safeArchives.length >= 7 ? "可生成" : "待归档")}
+        ${renderFutureCard("语义检索", `${cards.length} 张卡片`, cards.length >= 120 ? "卡片规模已适合接入问答式检索" : "等卡片规模扩大后再接入问答式检索", cards.length >= 120 ? "可评估" : "观察")}
       </div>
     </section>
   </main>
@@ -747,8 +748,8 @@ function renderLibraryPage(archives, url) {
     <header class="featureHero libraryFeatureHero" aria-label="知识库主视觉">
       <div class="featureHeroCopy">
         <p class="sectionLabel">检索入口</p>
-        <h1>从 ${cards.length} 张卡片里找回具体线索</h1>
-        <p class="muted">${escapeHtml(rangeText)}，覆盖 ${librarySourceCount || sourceRanks.length || 0} 个来源。先按方向、来源、类型缩小范围，再打开原文继续看。</p>
+        <h1>检索全部知识卡片</h1>
+        <p class="muted">${escapeHtml(rangeText)}，共 ${cards.length} 张卡片，覆盖 ${librarySourceCount || sourceRanks.length || 0} 个来源。可按关键词、类型、来源和日期组合筛选。</p>
         <div class="heroActionBar">
           <a class="primaryLink" href="#libraryFinder">开始检索</a>
           <a class="navButton" href="/review?days=30">看 30 天复盘</a>
@@ -766,7 +767,7 @@ function renderLibraryPage(archives, url) {
     <section class="pageAtlas libraryAtlas" aria-label="知识库概览">
       <div class="atlasLead">
         <span>检索前概览</span>
-        <h2>先看库里有什么，再决定怎么搜</h2>
+        <h2>先看范围，再缩小检索</h2>
         <p>${escapeHtml(rangeText)}，共 ${cards.length} 张知识卡片。当前更适合按方向、来源和类型快速缩小范围。</p>
       </div>
       <div class="atlasMetrics">
@@ -786,22 +787,22 @@ function renderLibraryPage(archives, url) {
     <section class="rolePanel" aria-label="页面用途">
       <div class="roleCard">
         <span>搜索</span>
-        <strong>我记得一个关键词</strong>
+        <strong>找一条线索</strong>
         <p>查标题、来源、方向、用途，适合快速找回某条信息。</p>
       </div>
       <div class="roleCard">
         <span>筛选</span>
-        <strong>我只想看某类内容</strong>
+        <strong>筛论文与工具</strong>
         <p>按论文、工具、模型、行业观察筛选，减少阅读噪音。</p>
       </div>
       <div class="roleCard">
         <span>定位</span>
-        <strong>我想回到某一天</strong>
+        <strong>回到某一天</strong>
         <p>按日期进入单日归档，适合从飞书日报继续深挖。</p>
       </div>
       <a class="roleCard roleLink" href="/review?days=30">
         <span>复盘</span>
-        <strong>想看一段时间的变化</strong>
+        <strong>看周期变化</strong>
         <p>去阶段复盘看趋势、论文池和工具池。</p>
       </a>
     </section>
@@ -868,7 +869,7 @@ function renderReviewPage(archives, url) {
       <div class="featureHeroCopy">
         <p class="sectionLabel">复盘入口</p>
         <h1>${escapeHtml(reviewHeadline)}</h1>
-        <p class="muted">${escapeHtml(review.summary)} 这里把多天归档压成方向、论文、工具和来源，不替代检索，而是帮你判断下一轮阅读重点。</p>
+        <p class="muted">基于最近 ${review.daysCovered} 天、${review.cardCount} 张卡片统计高频方向、论文线索、工具项目和来源变化。${escapeHtml(review.summary)}</p>
         <div class="rangeSwitch heroSwitch">
           <a class="${days === 7 ? "active" : ""}" href="/review?days=7">7 天</a>
           <a class="${days === 30 ? "active" : ""}" href="/review?days=30">30 天</a>
@@ -936,21 +937,21 @@ function renderReviewPage(archives, url) {
     <section class="reviewDashboard" aria-label="复盘看板">
       <section class="reviewGlassBlock directionBlock">
         <div class="blockTitle">
-          <p class="sectionLabel">方向温度</p>
+          <p class="sectionLabel">高频方向</p>
           <h2>高频方向</h2>
         </div>
         ${renderTopicBars(review.topics)}
       </section>
       <section class="reviewGlassBlock">
         <div class="blockTitle">
-          <p class="sectionLabel">阅读池</p>
+          <p class="sectionLabel">论文线索</p>
           <h2>最新论文</h2>
         </div>
         ${renderCompactList(review.papers)}
       </section>
       <section class="reviewGlassBlock">
         <div class="blockTitle">
-          <p class="sectionLabel">试用池</p>
+          <p class="sectionLabel">工具项目</p>
           <h2>工具项目</h2>
         </div>
         ${renderCompactList(review.tools)}
@@ -1265,13 +1266,11 @@ function renderDailyRhythm(archives) {
     .join("");
 }
 
-function renderFutureCard(title, stat, body, progress) {
-  const value = Math.max(8, Math.min(100, Number(progress) || 0));
+function renderFutureCard(title, stat, body, status) {
   return `<p class="futureCard">
     <strong>${escapeHtml(title)}</strong>
-    <span>${escapeHtml(stat)}</span>
+    <span>${escapeHtml(status)} · ${escapeHtml(stat)}</span>
     <em>${escapeHtml(body)}</em>
-    <i aria-hidden="true"><b style="width:${value}%"></b></i>
   </p>`;
 }
 
@@ -1430,11 +1429,11 @@ function renderHomeBriefingDeck({ date, latestHref, latestArchive, cards, source
     ? compactPageText(lead.knowledge?.fact || lead.summary || "打开单日归档查看完整事实、用途和下一步。", 118)
     : "当日报生成后，这里会把真实高分内容放在首位。";
   const leadSource = lead ? compactPageText(lead.source || "AI HOT", 28) : "AI HOT";
-  return `<section class="homeBriefingDeck" aria-label="今日情报台">
+  return `<section class="homeBriefingDeck" aria-label="今日重点">
     <div class="briefingHeader">
       <div>
         <span>${escapeHtml(date || "最新归档")}</span>
-        <h2>今天先判断三件事</h2>
+        <h2>今日重点</h2>
       </div>
       <p>${escapeHtml(compactPageText(summary, 92))}</p>
     </div>
@@ -1452,14 +1451,14 @@ function renderHomeBriefingDeck({ date, latestHref, latestArchive, cards, source
     </div>
     <aside class="briefStreamPanel" aria-label="连续更新">
       <div class="briefStreamTop">
-        <span>Live Archive</span>
+        <span>最近归档</span>
         <strong>${cardCount} 张卡片</strong>
         <p>${escapeHtml(cadenceCopy)}</p>
       </div>
       <ol class="briefStreamList">
         ${stream.length ? stream.map((card) => renderHomeBriefStreamItem(card, latestHref)).join("") : `<li class="emptyStreamLine"><span>等待更新</span><strong>暂无更多条目</strong><em>${escapeHtml(sourceCount || 0)} 个来源</em></li>`}
       </ol>
-      <a class="briefStreamLink" href="${latestHref}">查看今日复盘</a>
+      <a class="briefStreamLink" href="${latestHref}">查看单日归档</a>
     </aside>
   </section>`;
 }
@@ -1502,12 +1501,12 @@ function renderEmptyBriefPick() {
 function renderHomeChannelMatrix(types, cards) {
   const list = Array.isArray(types) ? types.filter((item) => item && item.name).slice(0, 6) : [];
   const total = list.reduce((sum, item) => sum + (Number(item.count) || 0), 0) || 0;
-  return `<section class="homeChannelMatrix" aria-label="方向频道">
+  return `<section class="homeChannelMatrix" aria-label="按类型查看">
     <div class="channelIntro">
-      <span>Channels</span>
-      <h2>把热点拆成可行动方向</h2>
-      <p>${total ? `当前前 ${list.length} 个方向覆盖 ${total} 张卡片，每个频道都给出一个代表条目。` : "等待归档后，这里会按方向展示代表内容。"}</p>
-      <a class="navButton" href="/library">按方向检索</a>
+      <span>按类型查看</span>
+      <h2>按内容类型进入卡片</h2>
+      <p>${total ? `当前前 ${list.length} 类内容覆盖 ${total} 张卡片，每类都给出一个代表条目。` : "等待归档后，这里会按类型展示代表内容。"}</p>
+      <a class="navButton" href="/library">按类型检索</a>
     </div>
     <div class="channelGrid">
       ${list.length ? list.map((item) => renderHomeChannelCard(item, cards)).join("") : renderEmptyChannelCards()}
@@ -1544,9 +1543,9 @@ function renderEmptyChannelCards() {
 function renderHomeDailyRiver(archives) {
   const list = Array.isArray(archives) ? archives.filter((archive) => archive && archive.date).slice(0, 10) : [];
   const total = countArchiveCards(list);
-  return `<section class="homeDailyRiver" aria-label="最近归档河流">
+  return `<section class="homeDailyRiver" aria-label="最近归档">
     <div class="riverIntro">
-      <span>Archive River</span>
+      <span>最近归档</span>
       <h2>最近 ${list.length || 0} 天的归档节奏</h2>
       <p>${list.length ? `${total} 张卡片被整理成日期索引，适合从今天回看上一轮热点。` : "等待归档后，这里会展示最近日期和代表方向。"}</p>
     </div>
@@ -1715,7 +1714,7 @@ function renderDailyPage(archive, message, archives = []) {
     </header>
     <section class="dailyReadOrder" aria-label="推荐阅读顺序">
       <div>
-        <span>Reading Order</span>
+        <span>优先阅读</span>
         <h2>先看三条代表线索</h2>
         <p>按上游分数、时间和归档顺序挑出当天最适合先读的内容，完整卡片仍在下面保留。</p>
       </div>
@@ -3070,7 +3069,17 @@ function dailyPageCSS() {
       outline: 3px solid color-mix(in oklch, var(--accent) 32%, transparent);
       outline-offset: 3px;
     }
-    .sourceLink { flex: none; }
+    .sourceLink {
+      flex: none;
+      min-height: 46px;
+      height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--accent-soft) 82%, white);
+    }
     .empty { margin: 24px 0 0; color: #607086; }
     @media (max-width: 760px) {
       .shell { width: min(100vw - 20px, 1180px); padding-top: 12px; }
@@ -4753,12 +4762,12 @@ function dailyPageCSS() {
     /* Strong visual headers for the three functional pages. */
     .featureHero {
       position: relative;
-      min-height: min(560px, calc(100dvh - 120px));
+      min-height: min(500px, calc(100dvh - 148px));
       display: grid;
       grid-template-columns: minmax(0, 0.86fr) minmax(420px, 0.92fr);
-      gap: clamp(28px, 5vw, 72px);
+      gap: clamp(24px, 4.4vw, 56px);
       align-items: center;
-      padding: clamp(44px, 5vw, 68px) 0 46px;
+      padding: clamp(34px, 4.4vw, 54px) 0 34px;
       isolation: isolate;
     }
     .featureHero::before {
@@ -4776,7 +4785,7 @@ function dailyPageCSS() {
     }
     .featureHero h1 {
       max-width: 14.5ch;
-      font-size: clamp(38px, 4.6vw, 60px);
+      font-size: clamp(34px, 4.1vw, 52px);
       line-height: 1.14;
       letter-spacing: 0;
       color: var(--ink);
@@ -4795,7 +4804,7 @@ function dailyPageCSS() {
     }
     .featureScene {
       position: relative;
-      min-height: 410px;
+      min-height: 360px;
       border: 1px solid color-mix(in oklch, white 68%, var(--accent-soft));
       border-radius: 22px;
       background:
@@ -4804,7 +4813,7 @@ function dailyPageCSS() {
       box-shadow: 0 18px 48px color-mix(in oklch, oklch(0.42 0.05 230) 13%, transparent);
       backdrop-filter: blur(24px) saturate(1.22);
       -webkit-backdrop-filter: blur(24px) saturate(1.22);
-      padding: 24px;
+      padding: 22px;
       overflow: hidden;
       display: grid;
       align-content: space-between;
@@ -4968,12 +4977,12 @@ function dailyPageCSS() {
     /* Homepage art direction inspired by iOS product storytelling. */
     .homeArtHero {
       position: relative;
-      min-height: min(720px, calc(100dvh - 92px));
+      min-height: min(620px, calc(100dvh - 142px));
       display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(460px, 0.88fr);
-      gap: clamp(36px, 6vw, 82px);
+      grid-template-columns: minmax(0, 0.92fr) minmax(430px, 0.88fr);
+      gap: clamp(28px, 5vw, 64px);
       align-items: center;
-      padding: clamp(44px, 6vw, 76px) 0 56px;
+      padding: clamp(36px, 5vw, 58px) 0 38px;
       isolation: isolate;
     }
     .homeArtHero::before {
@@ -5007,7 +5016,7 @@ function dailyPageCSS() {
     .heroCopyBlock h1 {
       max-width: 9.6ch;
       color: var(--ink);
-      font-size: clamp(44px, 5.4vw, 64px);
+      font-size: clamp(42px, 5vw, 58px);
       line-height: 1.12;
       letter-spacing: 0;
       text-wrap: balance;
@@ -5021,7 +5030,7 @@ function dailyPageCSS() {
     }
     .heroLead {
       max-width: 52ch;
-      margin: 24px 0 0;
+      margin: 20px 0 0;
       color: color-mix(in oklch, var(--ink) 72%, white);
       font-size: clamp(16px, 1.35vw, 20px);
       line-height: 1.78;
@@ -5031,7 +5040,7 @@ function dailyPageCSS() {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 30px;
+      margin-top: 24px;
     }
     .heroActionBar .primaryLink,
     .heroActionBar .navButton {
@@ -5052,12 +5061,12 @@ function dailyPageCSS() {
     }
     .heroPortalScene {
       position: relative;
-      min-height: 500px;
+      min-height: 450px;
       perspective: 1200px;
     }
     .portalWindow {
       position: absolute;
-      inset: 42px 22px 46px 54px;
+      inset: 34px 18px 36px 48px;
       z-index: 1;
       border: 1px solid color-mix(in oklch, var(--accent) 18%, white);
       border-radius: 24px;
@@ -5269,14 +5278,14 @@ function dailyPageCSS() {
       position: absolute;
       z-index: 8;
       width: min(364px, 72%);
-      min-height: 122px;
+      min-height: 112px;
       border: 1px solid color-mix(in oklch, white 66%, var(--accent-soft));
       border-radius: 16px;
       background:
         linear-gradient(145deg, color-mix(in oklch, white 92%, transparent), color-mix(in oklch, white 66%, transparent)),
         radial-gradient(circle at 72% 24%, color-mix(in oklch, var(--accent-3) 13%, transparent), transparent 16rem);
       color: var(--ink);
-      padding: 18px;
+      padding: 16px;
       display: grid;
       gap: 8px;
       align-content: start;
@@ -5320,19 +5329,19 @@ function dailyPageCSS() {
       line-height: 1.55;
     }
     .floatDaily {
-      top: 50px;
+      top: 34px;
       right: 0;
       transform: rotate(-2deg);
     }
     .floatLibrary {
-      top: 206px;
+      top: 172px;
       left: 8px;
       transform: rotate(-1.5deg);
       animation-delay: 90ms;
     }
     .floatReview {
       right: 10px;
-      bottom: 50px;
+      bottom: 34px;
       transform: rotate(2deg);
       animation-delay: 180ms;
     }
@@ -6036,7 +6045,6 @@ function dailyPageCSS() {
     @media (max-width: 1040px) {
       .featureHero,
       .homeArtHero,
-      .homeBriefingDeck,
       .briefingHeader,
       .homeVisualSummary,
       .homeContentRibbon,
@@ -6047,11 +6055,19 @@ function dailyPageCSS() {
       .homeFutureRibbon {
         grid-template-columns: 1fr;
       }
+      .homeBriefingDeck {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "head"
+          "lead"
+          "picks"
+          "stream";
+      }
       .featureHero {
         min-height: auto;
       }
       .featureScene {
-        min-height: 360px;
+        min-height: 320px;
         transform: none;
       }
       .trendTile {
@@ -6059,7 +6075,7 @@ function dailyPageCSS() {
         min-height: 340px;
       }
       .heroPortalScene {
-        min-height: 500px;
+        min-height: 440px;
       }
       .homeRouteGallery {
         grid-template-columns: 1fr;
@@ -6074,8 +6090,8 @@ function dailyPageCSS() {
     }
     @media (max-width: 760px) {
       .featureHero {
-        padding: 34px 0 28px;
-        gap: 24px;
+        padding: 28px 0 22px;
+        gap: 20px;
       }
       .featureHeroCopy {
         width: min(100%, calc(100vw - 48px));
@@ -6104,7 +6120,8 @@ function dailyPageCSS() {
         max-width: 100%;
         font-size: 16px;
         line-height: 1.72;
-        word-break: break-all;
+        overflow-wrap: anywhere;
+        word-break: normal;
       }
       .featureScene {
         min-height: auto;
@@ -6132,8 +6149,8 @@ function dailyPageCSS() {
       }
       .homeArtHero {
         min-height: auto;
-        padding: 36px clamp(12px, 4vw, 18px) 28px;
-        gap: 28px;
+        padding: 28px clamp(12px, 4vw, 18px) 22px;
+        gap: 22px;
       }
       .heroCopyBlock {
         width: min(100%, calc(100vw - 72px));
@@ -6142,14 +6159,15 @@ function dailyPageCSS() {
       }
       .heroCopyBlock h1 {
         max-width: 100%;
-        font-size: clamp(32px, 9.2vw, 42px);
+        font-size: clamp(31px, 8.6vw, 40px);
         line-height: 1.16;
       }
       .heroLead {
         max-width: 100%;
         font-size: 16px;
         line-height: 1.72;
-        word-break: break-all;
+        overflow-wrap: anywhere;
+        word-break: normal;
       }
       .heroActionBar {
         display: grid;
@@ -6168,7 +6186,7 @@ function dailyPageCSS() {
         padding-inline: 12px;
       }
       .heroPortalScene {
-        min-height: 440px;
+        min-height: 386px;
       }
       .portalWindow {
         inset: 44px 14px 40px 18px;
@@ -6205,20 +6223,20 @@ function dailyPageCSS() {
       }
       .floatEntry {
         width: min(340px, 86%);
-        min-height: 108px;
-        padding: 15px;
+        min-height: 96px;
+        padding: 14px;
       }
       .floatDaily {
         top: 28px;
         right: 0;
       }
       .floatLibrary {
-        top: 154px;
+        top: 132px;
         left: 0;
       }
       .floatReview {
         right: 0;
-        bottom: 36px;
+        bottom: 26px;
       }
       .windowMetric {
         display: none;
@@ -6334,7 +6352,7 @@ function dailyPageCSS() {
       .dailySceneCards b {
         max-width: calc(100vw - 48px);
         overflow-wrap: anywhere;
-        word-break: break-word;
+        word-break: normal;
       }
       .featureHero .muted,
       .heroLead,
@@ -6344,7 +6362,7 @@ function dailyPageCSS() {
         max-width: calc(100vw - 48px) !important;
       }
       .heroPortalScene {
-        min-height: 420px;
+        min-height: 360px;
         max-width: 100%;
         overflow: hidden;
       }
@@ -6355,14 +6373,14 @@ function dailyPageCSS() {
       }
       .floatEntry {
         width: calc(100% - 28px) !important;
-        min-height: 104px;
+        min-height: 92px;
         left: 14px !important;
         right: auto !important;
         transform: none !important;
       }
-      .floatDaily { top: 22px !important; }
-      .floatLibrary { top: 144px !important; }
-      .floatReview { top: 266px !important; bottom: auto !important; }
+      .floatDaily { top: 18px !important; }
+      .floatLibrary { top: 122px !important; }
+      .floatReview { top: 226px !important; bottom: auto !important; }
       .floatEntry strong {
         font-size: clamp(20px, 6vw, 24px);
       }
@@ -6371,6 +6389,111 @@ function dailyPageCSS() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap !important;
+      }
+      .siteNav {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center !important;
+        gap: 8px !important;
+        min-height: 64px;
+        padding: 8px 10px !important;
+        border-radius: 18px;
+      }
+      .brandMark {
+        min-height: 44px;
+        padding: 0 6px;
+        white-space: nowrap;
+      }
+      .navLinks {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+      }
+      .navLinks::-webkit-scrollbar {
+        display: none;
+      }
+      .navLinks a {
+        flex: 0 0 auto;
+        min-height: 40px;
+        padding: 0 10px;
+      }
+      .heroPortalScene {
+        min-height: 206px;
+      }
+      .homeArtHero .portalWindow {
+        display: none;
+      }
+      .homeArtHero .floatEntry {
+        min-height: 64px;
+        padding: 11px 12px;
+        gap: 4px;
+      }
+      .homeArtHero .floatEntry strong {
+        font-size: clamp(17px, 5vw, 20px);
+      }
+      .homeArtHero .floatEntry span {
+        min-height: 24px;
+        font-size: 11px;
+      }
+      .floatDaily { top: 4px !important; }
+      .floatLibrary { top: 72px !important; }
+      .floatReview { top: 140px !important; bottom: auto !important; }
+      .homeArtHero {
+        padding-bottom: 10px;
+        gap: 16px;
+      }
+      .featureScene {
+        min-height: 236px;
+        max-height: 276px;
+        padding: 16px;
+        align-content: start;
+        overflow: hidden;
+      }
+      .sceneHeadline {
+        gap: 7px;
+      }
+      .sceneHeadline strong {
+        font-size: clamp(21px, 6.2vw, 25px);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .sceneSearchBar {
+        min-height: 40px;
+      }
+      .sceneStatGrid p,
+      .sceneTypeStack p,
+      .dailySceneCards p {
+        padding: 10px;
+        border-radius: 12px;
+      }
+      .sceneStatGrid b {
+        font-size: 28px;
+      }
+      .libraryScene .sceneTypeStack p:nth-child(n+3),
+      .libraryScene .sceneSourceDock,
+      .dailyScene .sceneTypeStack p:nth-child(n+3),
+      .dailyScene .sceneSourceDock,
+      .reviewScene .miniTopicRows p:nth-child(n+3) {
+        display: none;
+      }
+      .reviewScene .miniBars {
+        min-height: 82px;
+        padding-bottom: 18px;
+      }
+      .dailySceneCards p:nth-child(n+2) {
+        display: none;
+      }
+      .dailyFeatureHero {
+        gap: 14px;
+        padding-bottom: 12px;
+      }
+      .dailyFeatureHero .featureScene {
+        min-height: 218px;
+        max-height: 238px;
       }
     }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
