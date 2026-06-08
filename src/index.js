@@ -1998,6 +1998,12 @@ function dailyPageCSS() {
       --sticky: 20;
       --shadow: 0 18px 48px color-mix(in oklch, oklch(0.36 0.055 205) 14%, transparent);
       --shadow-soft: 0 8px 24px color-mix(in oklch, oklch(0.42 0.04 205) 10%, transparent);
+      --accent-ink: color-mix(in oklch, var(--accent) 76%, black);
+      --accent-line: color-mix(in oklch, var(--accent) 46%, var(--line));
+      --accent-hover: color-mix(in oklch, var(--accent) 18%, white);
+      --accent-press: color-mix(in oklch, var(--accent) 24%, white);
+      --focus-ring: 0 0 0 4px color-mix(in oklch, var(--accent) 24%, transparent);
+      --focus-shadow: 0 8px 16px color-mix(in oklch, oklch(0.36 0.05 220) 14%, transparent);
     }
     * { box-sizing: border-box; }
     html { overflow-x: clip; }
@@ -2110,13 +2116,25 @@ function dailyPageCSS() {
       color: var(--muted);
       font-size: 14px;
       font-weight: 650;
-      transition: color 180ms ease, background 180ms ease, transform 180ms ease;
+      transition: color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
     }
     .navLinks a.active {
-      color: var(--accent);
+      color: var(--accent-ink);
       background: var(--accent-soft);
+      box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 22%, transparent);
     }
-    .navLinks a:hover { background: color-mix(in oklch, white 60%, transparent); text-decoration: none; transform: translateY(-1px); }
+    .navLinks a:hover,
+    .navLinks a:focus-visible {
+      color: var(--accent-ink);
+      background: var(--accent-hover);
+      text-decoration: none;
+      transform: translateY(-1px);
+      box-shadow: var(--focus-ring), inset 0 0 0 1px color-mix(in oklch, var(--accent) 24%, transparent);
+    }
+    .navLinks a.active:hover,
+    .navLinks a.active:focus-visible {
+      background: var(--accent-press);
+    }
     .top {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -2555,7 +2573,7 @@ function dailyPageCSS() {
       gap: 10px;
       align-content: start;
       color: var(--ink);
-      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
     }
     .portalTile:hover {
       transform: translateY(-3px);
@@ -2670,7 +2688,21 @@ function dailyPageCSS() {
       text-decoration: none;
     }
     .roleCard:hover,
-    .roleLink:hover { transform: translateY(-2px); border-color: color-mix(in oklch, var(--accent) 32%, var(--line)); text-decoration: none; }
+    .roleCard:focus-within,
+    .roleLink:hover,
+    .roleLink:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent-line);
+      background: color-mix(in oklch, white 76%, var(--accent-soft));
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+      text-decoration: none;
+    }
+    .roleCard:hover strong,
+    .roleCard:focus-within strong,
+    .roleLink:hover strong,
+    .roleLink:focus-visible strong {
+      color: var(--accent-ink);
+    }
     .reviewShell { padding-bottom: 64px; }
     .reviewHero {
       grid-template-columns: minmax(0, 1fr) auto;
@@ -2705,7 +2737,7 @@ function dailyPageCSS() {
     }
     .reviewIdentity a {
       width: fit-content;
-      min-height: 36px;
+      min-height: 44px;
       display: inline-flex;
       align-items: center;
       color: var(--accent);
@@ -2737,7 +2769,7 @@ function dailyPageCSS() {
       padding: 0 15px;
       font-size: 14px;
       font-weight: 700;
-      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
     }
     .navButton {
       border: 1px solid var(--line);
@@ -2747,9 +2779,37 @@ function dailyPageCSS() {
     .primaryLink {
       border: 1px solid color-mix(in oklch, var(--accent) 50%, var(--line));
       background: var(--accent-soft);
-      color: var(--accent);
+      color: var(--accent-ink);
     }
-    .navButton:hover, .primaryLink:hover { transform: translateY(-1px); text-decoration: none; }
+    .navButton:hover,
+    .navButton:focus-visible {
+      transform: translateY(-1px);
+      text-decoration: none;
+      border-color: var(--accent-line);
+      background: color-mix(in oklch, white 70%, var(--accent-soft));
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
+    .primaryLink:hover,
+    .primaryLink:focus-visible {
+      transform: translateY(-1px);
+      text-decoration: none;
+      border-color: color-mix(in oklch, var(--accent) 64%, var(--line));
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow), inset 0 0 0 1px color-mix(in oklch, var(--accent) 20%, transparent);
+    }
+    .navButton:active,
+    .primaryLink:active,
+    .rangeSwitch a:active,
+    .dateRail button:active,
+    .segments button:active,
+    #clearFilters:active,
+    .sourceLink:active {
+      transform: translateY(0) scale(0.985);
+      background: var(--accent-press);
+      color: var(--accent-ink);
+    }
     .emptyPanel {
       width: min(760px, 100%);
       border: 1px solid var(--line);
@@ -2791,10 +2851,22 @@ function dailyPageCSS() {
       border-radius: 999px;
       padding: 0 13px;
       font-size: 13px;
-      transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+      transition: background 180ms ease, color 180ms ease, transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
     }
-    .rangeSwitch a.active { border-color: color-mix(in oklch, var(--accent) 55%, var(--line)); background: var(--accent-soft); color: var(--accent); }
-    .rangeSwitch a:hover { transform: translateY(-1px); text-decoration: none; }
+    .rangeSwitch a.active { border-color: color-mix(in oklch, var(--accent) 55%, var(--line)); background: var(--accent-soft); color: var(--accent-ink); font-weight: 760; }
+    .rangeSwitch a:hover,
+    .rangeSwitch a:focus-visible {
+      transform: translateY(-1px);
+      text-decoration: none;
+      border-color: var(--accent-line);
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
+    .rangeSwitch a.active:hover,
+    .rangeSwitch a.active:focus-visible {
+      background: var(--accent-press);
+    }
     .reviewGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
     .metric {
       border: 1px solid var(--line);
@@ -2927,7 +2999,7 @@ function dailyPageCSS() {
       -webkit-backdrop-filter: blur(14px);
     }
     .search input::placeholder { color: var(--muted); opacity: 1; }
-    .search input:focus, select:focus, input[type="date"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent); }
+    .search input:focus, select:focus, input[type="date"]:focus { border-color: var(--accent-line); box-shadow: var(--focus-ring), inset 0 0 0 1px color-mix(in oklch, var(--accent) 12%, transparent); }
     #clearFilters {
       height: 44px;
       border: 1px solid color-mix(in oklch, var(--amber) 60%, var(--line));
@@ -2938,9 +3010,16 @@ function dailyPageCSS() {
       font: inherit;
       font-size: 15px;
       cursor: pointer;
-      transition: transform 180ms ease, background 180ms ease;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
     }
-    #clearFilters:hover { transform: translateY(-1px); background: color-mix(in oklch, white 76%, transparent); }
+    #clearFilters:hover,
+    #clearFilters:focus-visible {
+      transform: translateY(-1px);
+      border-color: color-mix(in oklch, var(--amber) 78%, var(--line));
+      background: color-mix(in oklch, var(--amber-soft) 78%, white);
+      color: color-mix(in oklch, var(--amber) 78%, black);
+      box-shadow: var(--focus-ring), 0 10px 24px color-mix(in oklch, var(--amber) 14%, transparent);
+    }
     .dateRailWrap { position: relative; min-width: 0; }
     .dateRailWrap::after {
       content: "";
@@ -2965,11 +3044,19 @@ function dailyPageCSS() {
       font: inherit;
       font-size: 13px;
       cursor: pointer;
-      transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+      transition: background 180ms ease, color 180ms ease, transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
     }
     .dateRail button span { color: var(--faint); margin-left: 3px; }
-    .dateRail button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
-    .dateRail button:hover { transform: translateY(-1px); }
+    .dateRail button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+    .dateRail button.active span { color: currentColor; }
+    .dateRail button:hover,
+    .dateRail button:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--accent-line);
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
     .resultLine { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
     .segments { display: flex; flex-wrap: wrap; gap: 8px; }
     .segments button {
@@ -2981,16 +3068,24 @@ function dailyPageCSS() {
       padding: 0 14px;
       font: inherit;
       cursor: pointer;
-      transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+      transition: background 180ms ease, color 180ms ease, transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
     }
     .segments button span { color: var(--faint); margin-left: 4px; }
     .segments button.active {
       border-color: var(--accent);
       background: var(--accent-soft);
-      color: var(--accent);
+      color: var(--accent-ink);
       font-weight: 700;
     }
-    .segments button:hover { transform: translateY(-1px); }
+    .segments button.active span { color: currentColor; }
+    .segments button:hover,
+    .segments button:focus-visible {
+      transform: translateY(-1px);
+      border-color: var(--accent-line);
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(315px, 1fr)); gap: 12px; align-items: stretch; }
     .card {
       background: linear-gradient(145deg, color-mix(in oklch, white 70%, transparent), color-mix(in oklch, white 42%, transparent));
@@ -3015,10 +3110,24 @@ function dailyPageCSS() {
     .grid .card:nth-child(7) { animation-delay: 240ms; }
     .grid .card:nth-child(8) { animation-delay: 280ms; }
     .card[hidden] { display: none; }
-    .card:hover {
+    .card:hover,
+    .card:focus-within {
       border-color: color-mix(in oklch, var(--accent) 42%, var(--line));
+      background:
+        radial-gradient(circle at 88% 8%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 12rem),
+        linear-gradient(145deg, color-mix(in oklch, white 78%, transparent), color-mix(in oklch, var(--accent-soft) 34%, white));
       transform: translateY(-3px);
-      box-shadow: 0 18px 42px color-mix(in oklch, oklch(0.42 0.07 252) 14%, transparent);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
+    .card:hover h2,
+    .card:focus-within h2 {
+      color: var(--accent-ink);
+    }
+    .card:hover .type,
+    .card:focus-within .type {
+      color: var(--accent-ink);
+      border-color: color-mix(in oklch, var(--accent) 34%, var(--green-soft));
+      background: var(--accent-soft);
     }
     .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .meta span {
@@ -3031,11 +3140,14 @@ function dailyPageCSS() {
     .type { background: var(--green-soft); color: var(--green); border-color: color-mix(in oklch, var(--green) 30%, var(--green-soft)); }
     .priority { background: var(--amber-soft); color: color-mix(in oklch, var(--amber) 85%, black); border-color: color-mix(in oklch, var(--amber) 28%, var(--amber-soft)); }
     .dateBadge {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
       border: 1px solid var(--line);
       background: color-mix(in oklch, white 54%, transparent);
       color: var(--muted);
       border-radius: 999px;
-      padding: 4px 9px;
+      padding: 0 12px;
       font-size: 12px;
       line-height: 1.4;
       font-weight: 600;
@@ -3066,8 +3178,9 @@ function dailyPageCSS() {
     button:focus-visible,
     input:focus-visible,
     select:focus-visible {
-      outline: 3px solid color-mix(in oklch, var(--accent) 32%, transparent);
+      outline: 3px solid color-mix(in oklch, var(--accent) 58%, transparent);
       outline-offset: 3px;
+      box-shadow: var(--focus-ring);
     }
     .sourceLink {
       flex: none;
@@ -3079,6 +3192,16 @@ function dailyPageCSS() {
       padding: 0 14px;
       border-radius: 999px;
       background: color-mix(in oklch, var(--accent-soft) 82%, white);
+      color: var(--accent-ink);
+      transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+    .sourceLink:hover,
+    .sourceLink:focus-visible {
+      transform: translateY(-1px);
+      text-decoration: none;
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
     }
     .empty { margin: 24px 0 0; color: #607086; }
     @media (max-width: 760px) {
@@ -3086,12 +3209,12 @@ function dailyPageCSS() {
       .siteNav { position: static; align-items: flex-start; flex-direction: column; gap: 8px; border-radius: var(--radius); padding: 10px; }
       .brandMark { min-height: 34px; }
       .navLinks { justify-content: flex-start; }
-      .navLinks a { min-height: 38px; padding: 0 11px; font-size: 13px; }
+      .navLinks a { min-height: 44px; padding: 0 11px; font-size: 13px; }
       .homeHero { grid-template-columns: 1fr; min-height: auto; gap: 18px; padding: 24px 0 28px; }
       .homeHero h1 { max-width: 100%; font-size: clamp(36px, 11.2vw, 46px); line-height: 1.03; }
       .homeLead { margin-top: 14px; font-size: 15.5px; line-height: 1.68; }
       .homeActions { gap: 8px; margin-top: 18px; }
-      .navButton, .primaryLink { min-height: 42px; padding: 0 13px; }
+      .navButton, .primaryLink { min-height: 44px; padding: 0 13px; }
       .homeMedia { min-height: auto; padding: 16px; gap: 12px; border-radius: var(--radius); grid-template-rows: auto; }
       .mediaTop, .mediaFoot { align-items: flex-start; flex-direction: column; gap: 8px; }
       .mediaHeadline { padding-bottom: 12px; }
@@ -3205,18 +3328,25 @@ function dailyPageCSS() {
       box-shadow: 0 0 0 5px color-mix(in oklch, var(--accent) 10%, transparent);
     }
     .navLinks a {
-      min-height: 42px;
+      min-height: 44px;
       color: var(--muted);
       font-size: 14px;
       font-weight: 720;
     }
     .navLinks a.active {
-      color: var(--ink);
+      color: var(--accent-ink);
       background: color-mix(in oklch, white 82%, var(--accent-soft));
+      box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 20%, transparent);
     }
-    .navLinks a:hover {
-      color: var(--ink);
-      background: color-mix(in oklch, white 70%, transparent);
+    .navLinks a:hover,
+    .navLinks a:focus-visible {
+      color: var(--accent-ink);
+      background: var(--accent-hover);
+      box-shadow: var(--focus-ring), inset 0 0 0 1px color-mix(in oklch, var(--accent) 24%, transparent);
+    }
+    .navLinks a.active:hover,
+    .navLinks a.active:focus-visible {
+      background: var(--accent-press);
     }
     .navLinks {
       flex: 1;
@@ -3598,7 +3728,7 @@ function dailyPageCSS() {
         padding: 12px;
       }
       .navLinks { width: 100%; justify-content: flex-start; gap: 6px; }
-      .navLinks a { min-height: 38px; padding: 0 11px; font-size: 13px; }
+      .navLinks a { min-height: 44px; padding: 0 11px; font-size: 13px; }
       .homeHero { padding: 30px 0 26px; gap: 20px; }
       .homeHero h1 { font-size: clamp(36px, 11vw, 48px); max-width: 100%; }
       .homeLead { font-size: 16px; line-height: 1.72; }
@@ -4445,6 +4575,7 @@ function dailyPageCSS() {
       height: 100%;
       border-radius: inherit;
       background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      transition: filter 180ms ease, box-shadow 180ms ease;
     }
     .typeSegments {
       display: grid;
@@ -4462,6 +4593,30 @@ function dailyPageCSS() {
       border-radius: 999px;
       background: linear-gradient(90deg, var(--accent), var(--accent-3));
       filter: hue-rotate(calc(var(--slot) * 26deg));
+      transition: filter 180ms ease, box-shadow 180ms ease;
+    }
+    .visualTile:hover .trendLine,
+    .visualTile:focus-within .trendLine,
+    .atlasPanel:hover .trendLine,
+    .atlasPanel:focus-within .trendLine,
+    .reviewGlassBlock:hover .barRow i,
+    .reviewGlassBlock:focus-within .barRow i,
+    .visualTile:hover .sourceList i,
+    .visualTile:focus-within .sourceList i,
+    .atlasPanel:hover .sourceList i,
+    .atlasPanel:focus-within .sourceList i,
+    .visualTile:hover .segmentTrack i,
+    .visualTile:focus-within .segmentTrack i,
+    .atlasPanel:hover .segmentTrack i,
+    .atlasPanel:focus-within .segmentTrack i {
+      filter: saturate(1.18) brightness(1.02);
+      box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 18%, transparent);
+    }
+    .visualTile:hover .tileCopy h2,
+    .visualTile:focus-within .tileCopy h2,
+    .atlasPanel:hover h3,
+    .atlasPanel:focus-within h3 {
+      color: var(--accent-ink);
     }
     .segmentLegend {
       display: grid;
@@ -5275,6 +5430,7 @@ function dailyPageCSS() {
       font-weight: 700;
     }
     .floatEntry {
+      --float-tilt: 0deg;
       position: absolute;
       z-index: 8;
       width: min(364px, 72%);
@@ -5292,12 +5448,25 @@ function dailyPageCSS() {
       box-shadow: 0 16px 36px color-mix(in oklch, oklch(0.42 0.05 230) 16%, transparent);
       backdrop-filter: blur(18px) saturate(1.22);
       -webkit-backdrop-filter: blur(18px) saturate(1.22);
-      transition: transform 220ms ease, background 220ms ease;
-      animation: floatIn 700ms cubic-bezier(0.22, 1, 0.36, 1) both, floatDrift 7s ease-in-out infinite;
+      transition: transform 220ms ease, background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+      transform: rotate(var(--float-tilt));
+      animation: floatIn 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    .floatEntry:hover {
+    .floatEntry:hover,
+    .floatEntry:focus-visible {
+      transform: translateY(-3px) rotate(var(--float-tilt)) scale(1.01);
       text-decoration: none;
-      background: color-mix(in oklch, white 86%, transparent);
+      border-color: color-mix(in oklch, var(--accent) 42%, white);
+      background:
+        linear-gradient(145deg, color-mix(in oklch, white 88%, var(--accent-soft)), color-mix(in oklch, white 64%, var(--accent-soft))),
+        radial-gradient(circle at 72% 24%, color-mix(in oklch, var(--accent-3) 18%, transparent), transparent 16rem);
+      box-shadow: var(--focus-ring), 0 18px 42px color-mix(in oklch, oklch(0.38 0.07 218) 18%, transparent);
+    }
+    .floatEntry:hover strong,
+    .floatEntry:focus-visible strong,
+    .floatEntry:hover span,
+    .floatEntry:focus-visible span {
+      color: var(--accent-ink);
     }
     .floatEntry span,
     .homeFutureRibbon > div > span,
@@ -5329,20 +5498,23 @@ function dailyPageCSS() {
       line-height: 1.55;
     }
     .floatDaily {
+      --float-tilt: -2deg;
       top: 34px;
       right: 0;
-      transform: rotate(-2deg);
+      transform: rotate(var(--float-tilt));
     }
     .floatLibrary {
+      --float-tilt: -1.5deg;
       top: 172px;
       left: 8px;
-      transform: rotate(-1.5deg);
+      transform: rotate(var(--float-tilt));
       animation-delay: 90ms;
     }
     .floatReview {
+      --float-tilt: 2deg;
       right: 10px;
       bottom: 34px;
-      transform: rotate(2deg);
+      transform: rotate(var(--float-tilt));
       animation-delay: 180ms;
     }
     @keyframes floatIn {
@@ -5437,16 +5609,33 @@ function dailyPageCSS() {
       background: color-mix(in oklch, white 76%, transparent);
       color: var(--ink);
       text-decoration: none;
-      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
     }
     .briefLead:hover,
+    .briefLead:focus-visible,
     .briefPick:hover,
+    .briefPick:focus-visible,
     .channelCard:hover,
-    .riverDay:hover {
+    .channelCard:focus-visible,
+    .riverDay:hover,
+    .riverDay:focus-visible {
       transform: translateY(-3px);
-      border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
-      background: color-mix(in oklch, white 86%, transparent);
+      border-color: var(--accent-line);
+      background:
+        radial-gradient(circle at 88% 12%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 13rem),
+        color-mix(in oklch, white 82%, var(--accent-soft));
+      box-shadow: var(--focus-ring), var(--focus-shadow);
       text-decoration: none;
+    }
+    .briefLead:hover strong,
+    .briefLead:focus-visible strong,
+    .briefPick:hover strong,
+    .briefPick:focus-visible strong,
+    .channelCard:hover strong,
+    .channelCard:focus-visible strong,
+    .riverDay:hover strong,
+    .riverDay:focus-visible strong {
+      color: var(--accent-ink);
     }
     .briefLead {
       grid-area: lead;
@@ -5874,13 +6063,21 @@ function dailyPageCSS() {
       color: var(--ink);
       padding: 14px;
       text-decoration: none;
-      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
     }
-    .signalRow:hover {
+    .signalRow:hover,
+    .signalRow:focus-visible {
       transform: translateY(-2px);
-      border-color: color-mix(in oklch, var(--accent) 28%, var(--line));
-      background: color-mix(in oklch, white 84%, transparent);
+      border-color: var(--accent-line);
+      background: color-mix(in oklch, white 82%, var(--accent-soft));
+      box-shadow: var(--focus-ring), var(--focus-shadow);
       text-decoration: none;
+    }
+    .signalRow:hover strong,
+    .signalRow:focus-visible strong,
+    .signalRow:hover span,
+    .signalRow:focus-visible span {
+      color: var(--accent-ink);
     }
     .signalRow span {
       grid-area: badge;
@@ -6002,13 +6199,23 @@ function dailyPageCSS() {
       align-content: end;
       gap: 10px;
       text-decoration: none;
-      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
     }
-    .routePane:hover {
+    .routePane:hover,
+    .routePane:focus-visible {
       transform: translateY(-3px);
-      background: color-mix(in oklch, white 86%, transparent);
+      background:
+        radial-gradient(circle at 80% 18%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 14rem),
+        color-mix(in oklch, white 84%, var(--accent-soft));
       text-decoration: none;
-      border-color: color-mix(in oklch, var(--accent) 30%, var(--line));
+      border-color: var(--accent-line);
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+    }
+    .routePane:hover strong,
+    .routePane:focus-visible strong,
+    .routePane:hover span,
+    .routePane:focus-visible span {
+      color: var(--accent-ink);
     }
     .routePrimary {
       background:
@@ -6416,7 +6623,7 @@ function dailyPageCSS() {
       }
       .navLinks a {
         flex: 0 0 auto;
-        min-height: 40px;
+        min-height: 44px;
         padding: 0 10px;
       }
       .heroPortalScene {
@@ -6496,14 +6703,179 @@ function dailyPageCSS() {
         max-height: 238px;
       }
     }
+    .navStatus {
+      transition: color 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+    .navStatus:hover,
+    .navStatus:focus-visible {
+      color: var(--accent-ink);
+      border-color: var(--accent-line);
+      background: var(--accent-hover);
+      box-shadow: var(--focus-ring), inset 0 0 0 1px color-mix(in oklch, var(--accent) 16%, transparent);
+      text-decoration: none;
+      transform: translateY(-1px);
+    }
+    .navStatus:hover span,
+    .navStatus:focus-visible span,
+    .navStatus:hover b,
+    .navStatus:focus-visible b {
+      color: currentColor;
+    }
+    .navButton:hover,
+    .navButton:focus-visible,
+    .primaryLink:hover,
+    .primaryLink:focus-visible {
+      transform: translateY(-1px);
+      text-decoration: none;
+      border-color: var(--accent-line);
+      background: var(--accent-hover);
+      color: var(--accent-ink);
+      box-shadow: var(--focus-ring), var(--focus-shadow), inset 0 0 0 1px color-mix(in oklch, var(--accent) 16%, transparent);
+    }
+    .primaryLink:hover,
+    .primaryLink:focus-visible {
+      background: color-mix(in oklch, var(--accent) 20%, white);
+      border-color: color-mix(in oklch, var(--accent) 58%, var(--line));
+    }
+    .portalTile,
+    .dayItem,
+    .pathPane,
+    .mediaItem,
+    .briefItems .mediaItem,
+    .topicCard,
+    .rhythmItem,
+    .card,
+    .roleCard,
+    .roleLink {
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+    }
+    .portalTile:hover,
+    .portalTile:focus-visible,
+    .dayItem:hover,
+    .dayItem:focus-visible,
+    .pathPane:hover,
+    .pathPane:focus-visible,
+    .mediaItem:hover,
+    .mediaItem:focus-within,
+    .briefItems .mediaItem:hover,
+    .briefItems .mediaItem:focus-within,
+    .topicCard:hover,
+    .topicCard:focus-within,
+    .rhythmItem:hover,
+    .rhythmItem:focus-visible,
+    .card:hover,
+    .card:focus-within,
+    .roleCard:hover,
+    .roleCard:focus-within,
+    .roleLink:hover,
+    .roleLink:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent-line);
+      background:
+        radial-gradient(circle at 88% 12%, color-mix(in oklch, var(--accent) 11%, transparent), transparent 13rem),
+        color-mix(in oklch, white 84%, var(--accent-soft));
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+      text-decoration: none;
+    }
+    .portalTile:hover strong,
+    .portalTile:focus-visible strong,
+    .portalTile:hover span,
+    .portalTile:focus-visible span,
+    .dayItem:hover strong,
+    .dayItem:focus-visible strong,
+    .dayItem:hover span,
+    .dayItem:focus-visible span,
+    .pathPane:hover strong,
+    .pathPane:focus-visible strong,
+    .pathPane:hover span,
+    .pathPane:focus-visible span,
+    .mediaItem:hover strong,
+    .mediaItem:focus-within strong,
+    .briefItems .mediaItem:hover strong,
+    .briefItems .mediaItem:focus-within strong,
+    .topicCard:hover strong,
+    .topicCard:focus-within strong,
+    .topicCard:hover b,
+    .topicCard:focus-within b,
+    .rhythmItem:hover strong,
+    .rhythmItem:focus-visible strong,
+    .card:hover h2,
+    .card:focus-within h2,
+    .card:hover a,
+    .card:focus-within a,
+    .roleCard:hover strong,
+    .roleCard:focus-within strong,
+    .roleLink:hover strong,
+    .roleLink:focus-visible strong {
+      color: var(--accent-ink);
+    }
+    .portalTile:active,
+    .dayItem:active,
+    .pathPane:active,
+    .rhythmItem:active,
+    .roleLink:active,
+    .navButton:active,
+    .primaryLink:active,
+    .floatEntry:active,
+    .routePane:active,
+    .briefLead:active,
+    .briefPick:active,
+    .channelCard:active,
+    .riverDay:active,
+    .signalRow:active {
+      transform: translateY(0) scale(0.99);
+      background:
+        radial-gradient(circle at 88% 12%, color-mix(in oklch, var(--accent) 13%, transparent), transparent 13rem),
+        var(--accent-press);
+    }
+    .floatEntry:active {
+      transform: translateY(0) rotate(var(--float-tilt)) scale(0.99);
+    }
+    .visualTile:hover,
+    .visualTile:focus-within,
+    .atlasPanel:hover,
+    .atlasPanel:focus-within,
+    .reviewGlassBlock:hover,
+    .reviewGlassBlock:focus-within {
+      border-color: color-mix(in oklch, var(--accent) 32%, var(--line));
+      background:
+        radial-gradient(circle at 86% 12%, color-mix(in oklch, var(--accent) 7%, transparent), transparent 16rem),
+        color-mix(in oklch, white 80%, var(--accent-soft));
+      box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 10%, transparent);
+    }
+    .visualTile:hover .tileCopy h2,
+    .visualTile:focus-within .tileCopy h2,
+    .atlasPanel:hover h3,
+    .atlasPanel:focus-within h3,
+    .reviewGlassBlock:hover h2,
+    .reviewGlassBlock:focus-within h2 {
+      color: var(--accent-ink);
+    }
+    @media (hover: none) {
+      .portalTile:active,
+      .dayItem:active,
+      .pathPane:active,
+      .rhythmItem:active,
+      .roleLink:active,
+      .floatEntry:active,
+      .routePane:active,
+      .briefLead:active,
+      .briefPick:active,
+      .channelCard:active,
+      .riverDay:active,
+      .signalRow:active {
+        box-shadow: var(--focus-ring);
+      }
+    }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
       .siteNav, .top, .homeIntentCopy, .homePrinciples, .homeRoadmap, .homeShowcase, .homePulse, .pulseMetric, .pulseChart, .homeInsight, .homeLatest, .latestSignal, .portalTile, .homeMedia, .dailyTools, .emptyPanel, .reviewPanel, .finderPanel, .card, .commandPanel, .pageAtlas, .topicFocus, .dailyRhythm, .portalWindow, .floatEntry, .visualTile, .homeBriefingDeck, .briefLead, .briefPick, .briefStreamPanel, .homeChannelMatrix, .channelCard, .homeDailyRiver, .riverDay, .homeContentRibbon, .homeSignalBoard, .dailyReadOrder, .routePane, .homeFutureRibbon, .featureScene {
         background: var(--surface-strong);
       }
     }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-      .card:hover, .portalTile:hover, .dayItem:hover, .roleLink:hover, .navLinks a:hover, .navButton:hover, .primaryLink:hover, .rangeSwitch a:hover, .dateRail button:hover, .segments button:hover, #clearFilters:hover, .floatEntry:hover, .routePane:hover, .briefLead:hover, .briefPick:hover, .channelCard:hover, .riverDay:hover { transform: none; }
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+      :where(.card, .portalTile, .dayItem, .roleLink, .roleCard, .pathPane, .mediaItem, .topicCard, .rhythmItem, .navLinks a, .navStatus, .navButton, .primaryLink, .rangeSwitch a, .dateRail button, .segments button, #clearFilters, .sourceLink, .routePane, .briefLead, .briefPick, .channelCard, .riverDay, .signalRow):is(:hover, :focus-visible, :focus-within, :active) { transform: none !important; }
+      .floatEntry:is(:hover, :focus-visible, :active) { transform: rotate(var(--float-tilt)) !important; }
     }
   `;
 }
