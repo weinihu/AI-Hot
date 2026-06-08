@@ -1019,7 +1019,7 @@ function buildPeriodReview(archives, days) {
 
 function reviewHeroHeadline(review) {
   const topics = (review.topics || []).slice(0, 2).map((item) => item.name).filter(Boolean);
-  if (topics.length) return `${review.daysCovered} 天复盘：${topics.join("、")}是主线`;
+  if (topics.length) return `${review.daysCovered} 天复盘：${topics.join("/")} 主线`;
   return `${review.daysCovered} 天复盘：等待更多归档`;
 }
 
@@ -6701,6 +6701,268 @@ function dailyPageCSS() {
       .dailyFeatureHero .featureScene {
         min-height: 218px;
         max-height: 238px;
+      }
+    }
+    /* Final responsive layout pass: keep the portal visual, but make content arrive sooner. */
+    @media (min-width: 1041px) {
+      .homeArtHero {
+        min-height: min(560px, calc(100dvh - 128px));
+        padding: 34px 0 30px;
+      }
+      .heroPortalScene {
+        min-height: 390px;
+      }
+      .featureHero {
+        min-height: min(560px, calc(100dvh - 128px));
+        padding: 30px 0 28px;
+        gap: clamp(24px, 3.6vw, 46px);
+      }
+      .featureHero h1 {
+        font-size: clamp(36px, 3.65vw, 48px);
+        line-height: 1.1;
+      }
+      .featureScene {
+        min-height: 330px;
+        max-height: 500px;
+        align-content: start;
+        gap: 12px;
+        padding: 20px;
+      }
+      .libraryScene .sceneTypeStack p:nth-child(n+4),
+      .reviewScene .miniTopicRows p:nth-child(n+4),
+      .dailySceneCards p:nth-child(n+3),
+      .sceneSourceDock span:nth-child(n+4) {
+        display: none;
+      }
+      .sceneHeadline strong {
+        font-size: clamp(25px, 2.35vw, 34px);
+      }
+      .sceneStatGrid p,
+      .sceneTypeStack p,
+      .dailySceneCards p {
+        padding: 11px;
+      }
+    }
+    @media (min-width: 761px) and (max-width: 1040px) {
+      .homeShell,
+      .shell {
+        width: min(920px, calc(100vw - 32px));
+      }
+      .homeArtHero,
+      .featureHero {
+        min-height: auto;
+        padding: 28px 0 30px;
+        gap: 24px;
+      }
+      .homeArtHero::after {
+        height: 72px;
+      }
+      .heroCopyBlock h1 {
+        max-width: 13ch;
+        font-size: clamp(38px, 5vw, 48px);
+        line-height: 1.08;
+      }
+      .heroLead,
+      .featureHero .muted {
+        max-width: 62ch;
+        margin-top: 14px;
+        font-size: 16.5px;
+        line-height: 1.62;
+      }
+      .heroActionBar {
+        margin-top: 18px;
+      }
+      .heroPortalScene {
+        min-height: 320px;
+      }
+      .portalWindow {
+        inset: 24px 16px 22px;
+        transform: rotate(-2deg);
+      }
+      .floatEntry {
+        width: min(360px, 52%);
+        min-height: 82px;
+        padding: 13px;
+      }
+      .floatEntry p {
+        display: none;
+      }
+      .floatDaily { top: 12px; right: 10px; }
+      .floatLibrary { top: 110px; left: 14px; }
+      .floatReview { right: 12px; bottom: 14px; }
+      .featureHero h1 {
+        max-width: 15ch;
+        font-size: clamp(34px, 4.8vw, 44px);
+        line-height: 1.1;
+      }
+      .featureScene {
+        min-height: 300px;
+        max-height: 320px;
+        overflow: hidden;
+      }
+      .libraryScene .sceneSourceDock span:nth-child(n+4),
+      .dailyScene .sceneSourceDock span:nth-child(n+4) {
+        display: none;
+      }
+      .libraryScene .sceneTypeStack p:nth-child(n+3),
+      .dailyScene .sceneTypeStack p:nth-child(n+3),
+      .reviewScene .miniTopicRows p:nth-child(n+3),
+      .featureScene .sceneSourceDock {
+        display: none;
+      }
+      .libraryScene .sceneTypeStack,
+      .dailyScene .sceneTypeStack,
+      .reviewScene .miniTopicRows {
+        display: none;
+      }
+    }
+    @media (max-width: 760px) {
+      .shell,
+      .homeShell {
+        width: calc(100vw - 24px);
+      }
+      .siteNav {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-auto-rows: auto;
+        align-items: center !important;
+        row-gap: 7px !important;
+        min-height: auto;
+        padding: 8px 10px 10px !important;
+      }
+      .brandMark {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .navStatus {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+        display: inline-flex !important;
+        min-height: 38px;
+        max-width: 138px;
+        padding: 0 10px;
+        font-size: 11px;
+      }
+      .navStatus b {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .navLinks {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        overflow: visible;
+      }
+      .navLinks a {
+        min-width: 0;
+        justify-content: center;
+        padding: 0 4px;
+        font-size: 12px;
+      }
+      .homeArtHero,
+      .featureHero {
+        padding: 20px 0 16px;
+        gap: 14px;
+      }
+      .heroCopyBlock,
+      .featureHeroCopy {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .heroCopyBlock h1,
+      .featureHero h1 {
+        max-width: 100%;
+        font-size: clamp(29px, 7.8vw, 34px);
+        line-height: 1.12;
+      }
+      .heroLead,
+      .featureHero .muted {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 12px;
+        font-size: 15px;
+        line-height: 1.62;
+      }
+      .heroActionBar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .heroActionBar .primaryLink {
+        grid-column: 1 / -1;
+      }
+      .heroActionBar .navButton,
+      .heroActionBar .primaryLink {
+        min-width: 0;
+        min-height: 44px;
+      }
+      .heroCapsules,
+      .stats {
+        gap: 7px;
+      }
+      .heroCapsules span,
+      .stats span {
+        min-height: 34px;
+        padding: 0 10px;
+      }
+      .heroPortalScene {
+        min-height: 184px;
+      }
+      .homeArtHero .floatEntry {
+        min-height: 56px;
+        padding: 9px 11px;
+      }
+      .homeArtHero .floatEntry strong {
+        font-size: clamp(16px, 4.6vw, 18px);
+        line-height: 1.14;
+      }
+      .homeArtHero .floatEntry p {
+        display: none;
+      }
+      .homeArtHero .floatEntry span {
+        min-height: 22px;
+      }
+      .floatDaily { top: 2px !important; }
+      .floatLibrary { top: 62px !important; }
+      .floatReview { top: 122px !important; }
+      .featureScene {
+        min-height: 208px;
+        max-height: 238px;
+        padding: 14px;
+      }
+      .reviewFeatureHero .featureScene {
+        min-height: 258px;
+        max-height: 272px;
+      }
+      .sceneHeadline strong {
+        font-size: clamp(19px, 5.6vw, 23px);
+      }
+      .sceneSearchBar {
+        min-height: 38px;
+      }
+      .sceneStatGrid b {
+        font-size: 24px;
+      }
+      .briefPicks,
+      .riverRail {
+        display: grid;
+        grid-template-columns: 1fr;
+        overflow-x: visible;
+      }
+      .briefPick,
+      .riverDay {
+        width: 100%;
+        flex: initial;
+      }
+      .grid,
+      .reviewSampleGrid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .card {
+        min-width: 0;
+        width: 100%;
       }
     }
     .navStatus {
