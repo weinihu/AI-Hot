@@ -1,0 +1,13 @@
+name = "aihot-feishu-briefing"
+main = "src/index.js"
+compatibility_date = "2025-05-30"
+workers_dev = true
+
+# Beijing 21:29 = UTC 13:29.
+# Change this after the first version is stable.
+[triggers]
+crons = ["29 13 * * *"]
+
+[[kv_namespaces]]
+binding = "AIHOT_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
