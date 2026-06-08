@@ -32,7 +32,7 @@ import {
 const SITE_SNAPSHOT_KV_KEY = "site_snapshot:v1";
 const PUBLIC_BROWSER_CACHE_SECONDS = 60;
 const PUBLIC_EDGE_CACHE_SECONDS = 10 * 60;
-const PUBLIC_HTML_CACHE_VERSION = "2026-06-08-portal-refined-density";
+const PUBLIC_HTML_CACHE_VERSION = "2026-06-09-home-editorial";
 
 export default {
   async fetch(request, env, ctx) {
@@ -42,7 +42,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "aihot-feishu-briefing",
-        version: "2026-06-08-portal-refined-density",
+        version: "2026-06-09-home-editorial",
         cron: "29 13 * * *",
         timezone_note: "Trigger Beijing 21:29 = UTC 13:29; Feishu send waits until Beijing 21:30 if ready early.",
       });
@@ -516,25 +516,13 @@ function renderHomePage(archives) {
   const review = buildPeriodReview(safeArchives, 30);
   const latestArchive = safeArchives[0];
   const latestSummary = latestArchive ? dailyPageSummary(latestArchive) : "每天把 AI HOT 的精选内容整理成清爽日报，帮你快速扫过模型、产品、论文和行业变化。";
-  const primaryTopics = review.topics.slice(0, 5).map((item) => item.name).join("、") || "论文、工具、模型、行业变化";
   const typeSummary = dailyPageCategories(cards).slice(0, 7);
   const latestCards = Array.isArray(latestArchive?.cards) ? latestArchive.cards.slice(0, 4) : [];
   const sourceCount = new Set(cards.map((card) => card.source).filter(Boolean)).size;
   const paperCount = cards.filter((card) => card.knowledge?.isPaper === "是" || /论文/.test(cardType(card))).length;
   const toolCount = cards.filter((card) => cardType(card) === "工具/项目候选").length;
-  const recentCards = countArchiveCards(safeArchives.slice(0, 7));
-  const previousCards = countArchiveCards(safeArchives.slice(7, 14));
-  const delta = recentCards - previousCards;
-  const dailyAverage = safeArchives.length ? Math.round(cards.length / safeArchives.length) : 0;
   const sourceRanks = topSourceCounts(cards, 5);
-  const topCategory = typeSummary[0]?.name || "知识卡片";
-  const activeDaysText = safeArchives.length
-    ? `${safeArchives[safeArchives.length - 1].date} 至 ${safeArchives[0].date}`
-    : "等待第一份归档";
   const latestHref = `/daily?date=${escapeAttribute(latestDate)}`;
-  const latestTitle = latestCards[0]?.title ? compactPageText(latestCards[0].title, 34) : "今日重点等待归档";
-  const topTopic = review.topics[0]?.name || "AI 方向";
-  const secondTopic = review.topics[1]?.name || "工具项目";
   const latestCardCount = Array.isArray(latestArchive?.cards) ? latestArchive.cards.length : 0;
   const signalCards = topScoredCards(cards, 4);
   const leadSignal = signalCards[0] || latestCards[0] || null;
@@ -544,11 +532,11 @@ function renderHomePage(archives) {
   const leadSignalFact = leadSignal
     ? compactPageText(leadSignal.knowledge?.fact || leadSignal.summary || "打开最新归档查看完整条目。", 96)
     : "当日报生成后，这里会按上游分数和归档时间给出第一条值得追踪的线索。";
-  const leadSignalHref = leadSignal?.archiveDate ? `/daily?date=${escapeAttribute(leadSignal.archiveDate)}` : latestHref;
-  const cadenceCopy =
-    safeArchives.length >= 14 && previousCards > 0
-      ? `${delta >= 0 ? "本周新增比前一周期多" : "本周新增比前一周期少"} ${Math.abs(delta)} 张卡片，最新周期仍在持续沉淀。`
-      : `最近 ${Math.min(7, safeArchives.length || 7)} 天新增 ${recentCards} 张卡片，归档覆盖 ${activeDaysText}。`;
+  const topCategory = typeSummary[0]?.name || "知识卡片";
+  const topSource = sourceRanks[0]?.name || "AI HOT";
+  const heroBrief = latestArchive
+    ? `今日 ${latestCardCount} 张卡片，主线集中在 ${typeSummary.slice(0, 3).map((item) => item.name).join("、") || topCategory}。`
+    : "日报生成后会把当天值得先看的内容放在这里。";
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -563,12 +551,12 @@ function renderHomePage(archives) {
     ${renderSiteNav("home", latestDate)}
     <section class="homeArtHero" aria-label="AI HOT 每日归档与复盘工作台">
       <div class="heroCopyBlock">
-        <p class="heroKicker">每日归档与复盘工作台</p>
+        <p class="heroKicker">AI HOT 知识入口</p>
         <h1 class="heroHeadline">
           <span>AI HOT</span>
-          <span>每日归档</span>
+          <span>情报台</span>
         </h1>
-        <p class="heroLead">更新至 ${escapeHtml(latestDate)}，已归档 ${safeArchives.length} 天、${cards.length} 张卡片，覆盖 ${sourceCount} 个来源。这里汇总今日重点、近 30 天方向和可检索入口。</p>
+        <p class="heroLead">${escapeHtml(latestDate)} 已沉淀 ${latestCardCount} 张新卡片。先看今日主线、优先线索和最近节奏，再进入知识库、阶段复盘或单日归档继续追踪。</p>
         <div class="heroActionBar">
           <a class="primaryLink" href="/library">进入知识库</a>
           <a class="navButton" href="/review?days=30">查看阶段复盘</a>
@@ -580,133 +568,47 @@ function renderHomePage(archives) {
           <span><b>${sourceCount}</b> 个来源</span>
         </div>
       </div>
-      <div class="heroPortalScene" aria-label="核心入口预览">
-        <div class="portalWindow" aria-hidden="true">
-          <div class="windowChrome"><i></i><i></i><i></i></div>
-          <div class="windowBoard">
-            <div class="windowBoardHeader">
-              <span>${escapeHtml(latestDate)}</span>
-              <strong>${latestCardCount} 张</strong>
-            </div>
-            ${renderHeroMiniBars(safeArchives.slice(0, 10))}
-            ${renderHeroTopicRows(review.topics.slice(0, 4))}
-            <div class="miniDock">
-              <span>论文 ${paperCount}</span>
-              <span>工具 ${toolCount}</span>
-              <span>来源 ${sourceCount}</span>
-            </div>
-          </div>
-        </div>
-        <a class="floatEntry floatDaily" href="${latestHref}">
-          <span>今日</span>
-          <strong>每日重点</strong>
-          <p>${escapeHtml(compactPageText(latestTitle, 42))}</p>
-        </a>
-        <a class="floatEntry floatLibrary" href="/library">
-          <span>知识库</span>
-          <strong>检索卡片</strong>
-          <p>${cards.length} 张卡片，按标题、来源、类型和日期找回。</p>
-        </a>
-        <a class="floatEntry floatReview" href="/review?days=30">
-          <span>复盘</span>
-          <strong>趋势复盘</strong>
-          <p>${escapeHtml(compactPageText(review.summary, 54))}</p>
-        </a>
-      </div>
+      ${renderHomeHeroBrief({
+        date: latestDate,
+        latestHref,
+        leadSignalTitle,
+        leadSignalFact,
+        leadSignalSource,
+        heroBrief,
+        topCategory,
+        topSource,
+      })}
     </section>
 
-    ${renderHomeBriefingDeck({
+    ${renderHomeTodayBoard({
       date: latestDate,
       latestHref,
       latestArchive,
       cards: briefingCards,
+      latestSummary,
+      paperCount,
+      toolCount,
       sourceCount,
-      cadenceCopy,
+      typeSummary,
+      sourceRanks,
     })}
-
-    <section class="homeVisualSummary" aria-label="内容概览">
-      <section class="visualTile trendTile">
-        <div class="tileCopy">
-          <span>最近 14 天</span>
-          <h2>归档节奏</h2>
-          <p>${escapeHtml(cadenceCopy)}</p>
-        </div>
-        ${renderTrendAreaChart(safeArchives.slice(0, 14))}
-      </section>
-      <section class="visualTile structureTile">
-        <div class="tileCopy">
-          <span>内容结构</span>
-          <h2>${escapeHtml(topCategory)}</h2>
-          <p>${escapeHtml(topTopic)}、${escapeHtml(secondTopic)} 是近期反复出现的方向。</p>
-        </div>
-        ${renderTypeSegments(typeSummary)}
-      </section>
-      <section class="visualTile sourceTile">
-        <div class="tileCopy">
-          <span>来源</span>
-          <h2>${sourceCount} 个入口</h2>
-          <p>优先保留能继续阅读和复盘的来源。</p>
-        </div>
-        ${renderSourceList(sourceRanks)}
-      </section>
-    </section>
-
-    ${renderHomeChannelMatrix(typeSummary, cards)}
-
-    <section class="homeSignalBoard" aria-label="高价值线索">
-      <div class="signalNarrative">
-        <span>优先阅读</span>
-        <h2>按分数和时间排出第一条</h2>
-        <p>当前排在前面的是「${escapeHtml(leadSignalTitle)}」，来自 ${escapeHtml(leadSignalSource)}。${escapeHtml(leadSignalFact)}</p>
-        <a class="primaryLink" href="${leadSignalHref}">查看优先条目</a>
-      </div>
-      <div class="signalQueue">
-        ${renderHomeSignalQueue(signalCards)}
-      </div>
-    </section>
-
-    ${renderHomeDailyRiver(safeArchives.slice(0, 10))}
-
-    <section class="homeContentRibbon" aria-label="最新内容">
-      <div class="ribbonIntro">
-        <span>今日重点</span>
-        <h2>今天值得先读的条目</h2>
-        <p>${escapeHtml(compactPageText(latestSummary, 88))}</p>
-      </div>
-      <div class="ribbonCards">
-        ${renderHomeLatestSignals(latestCards)}
-      </div>
-    </section>
 
     <section class="homeRouteGallery" aria-label="阅读入口">
       <a class="routePane routePrimary" href="/library">
         <span>知识库</span>
         <strong>进入知识库</strong>
-        <p>按关键词、日期和类型找回具体内容。</p>
+        <p>${cards.length} 张卡片，按关键词、来源、类型和日期找回具体内容。</p>
       </a>
       <a class="routePane" href="/review?days=30">
         <span>阶段复盘</span>
         <strong>看阶段复盘</strong>
-        <p>查看 7/30/90 天的方向、论文和来源变化。</p>
+        <p>${review.cardCount} 张卡片沉淀出 ${review.paperCount} 条论文、${review.toolCount} 个工具项目。</p>
       </a>
       <a class="routePane" href="${latestHref}">
         <span>单日归档</span>
         <strong>读最新日报</strong>
         <p>${escapeHtml(latestDate)}，${latestCardCount} 张卡片。</p>
       </a>
-    </section>
-
-    <section class="homeFutureRibbon" aria-label="可扩展入口">
-      <div>
-        <span>后续展望</span>
-        <h2>只有数据够用的方向才进入下一步</h2>
-      </div>
-      <div class="futureGrid">
-        ${renderFutureCard("论文池", `${paperCount} 条论文线索`, paperCount >= 12 ? "可按方法、任务和复现价值拆分阅读队列" : "继续积累论文条目后再拆分阅读队列", paperCount >= 12 ? "可整理" : "待积累")}
-        ${renderFutureCard("专题页", primaryTopics, review.topics.length >= 4 ? "反复出现的方向可整理成专题索引" : "等主题覆盖更多日期后再生成专题", review.topics.length >= 4 ? "候选" : "观察")}
-        ${renderFutureCard("周报月报", `${safeArchives.length} 天历史`, safeArchives.length >= 7 ? "归档天数已够生成周期视图" : "至少 7 天归档后再生成周期视图", safeArchives.length >= 7 ? "可生成" : "待归档")}
-        ${renderFutureCard("语义检索", `${cards.length} 张卡片`, cards.length >= 120 ? "卡片规模已适合接入问答式检索" : "等卡片规模扩大后再接入问答式检索", cards.length >= 120 ? "可评估" : "观察")}
-      </div>
     </section>
   </main>
   <script>${dailyPageScript()}</script>
@@ -1413,6 +1315,97 @@ function renderHomeLatestSignals(cards) {
       </article>`;
     })
     .join("");
+}
+
+function renderHomeHeroBrief({ date, latestHref, leadSignalTitle, leadSignalFact, leadSignalSource, heroBrief, topCategory, topSource }) {
+  return `<aside class="homeHeroBrief" aria-label="今日情报摘要">
+    <div class="heroBriefTop">
+      <span>${escapeHtml(date || "最新归档")}</span>
+      <p>${escapeHtml(heroBrief)}</p>
+    </div>
+    <a class="heroBriefLead" href="${latestHref}">
+      <span>今日先读</span>
+      <strong>${escapeHtml(leadSignalTitle)}</strong>
+      <p>${escapeHtml(leadSignalFact)}</p>
+      <em>${escapeHtml(leadSignalSource)}</em>
+    </a>
+    <div class="heroBriefFacts" aria-label="归档要点">
+      <p><span>主线</span><b>${escapeHtml(topCategory)}</b></p>
+      <p><span>高频来源</span><b>${escapeHtml(compactPageText(topSource, 22))}</b></p>
+    </div>
+  </aside>`;
+}
+
+function renderHomeTodayBoard({ date, latestHref, latestArchive, cards, latestSummary, paperCount, toolCount, sourceCount, typeSummary, sourceRanks }) {
+  const list = Array.isArray(cards) ? cards.filter((card) => card && card.title).slice(0, 4) : [];
+  const lead = list[0] || null;
+  const supporting = list.slice(1, 4);
+  const summary = latestArchive ? latestSummary : "日报生成后会展示当天主线、代表条目和继续追踪入口。";
+  return `<section class="homeTodayBoard" aria-label="今日判断">
+    <div class="todayBoardHeader">
+      <span>${escapeHtml(date || "最新归档")}</span>
+      <h2>今天先判断三件事</h2>
+      <p>${escapeHtml(compactPageText(summary, 120))}</p>
+    </div>
+    <div class="todayBoardGrid">
+      ${renderHomeTodayLead(lead, latestHref)}
+      <div class="todayQueue" aria-label="代表线索">
+        ${supporting.length ? supporting.map((card) => renderHomeTodayQueueCard(card, latestHref)).join("") : renderEmptyBriefPick()}
+      </div>
+      <aside class="todayFacts" aria-label="内容范围">
+        <div>
+          <span>内容范围</span>
+          <strong>${paperCount} 条论文线索，${toolCount} 个工具项目</strong>
+          <p>${sourceCount} 个来源被整理成可检索卡片。</p>
+        </div>
+        ${renderHomeFactRows(typeSummary, sourceRanks)}
+      </aside>
+    </div>
+  </section>`;
+}
+
+function renderHomeTodayLead(card, fallbackHref) {
+  if (!card) {
+    return `<article class="todayLead emptyBriefPick">
+      <span>等待归档</span>
+      <strong>暂无今日主线</strong>
+      <p>日报生成后会把当天最值得先读的条目放在这里。</p>
+    </article>`;
+  }
+  const href = homeCardHref(card, fallbackHref);
+  const title = compactPageText(card.title || "Untitled", 62);
+  const fact = compactPageText(card.knowledge?.fact || card.summary || "", 118);
+  const source = compactPageText(card.source || "AI HOT", 30);
+  return `<a class="todayLead" href="${href}">
+    <span>${escapeHtml(cardActionLabel(card))}</span>
+    <strong>${escapeHtml(title)}</strong>
+    ${fact ? `<p>${escapeHtml(fact)}</p>` : ""}
+    <footer><em>${escapeHtml(source)}</em><b>${escapeHtml(cardType(card))}</b></footer>
+  </a>`;
+}
+
+function renderHomeTodayQueueCard(card, fallbackHref) {
+  const href = homeCardHref(card, fallbackHref);
+  const title = compactPageText(card.title || "Untitled", 44);
+  const fact = compactPageText(card.knowledge?.fact || card.summary || card.source || "", 72);
+  return `<a class="todayQueueCard" href="${href}">
+    <span>${escapeHtml(cardActionLabel(card))}</span>
+    <strong>${escapeHtml(title)}</strong>
+    <p>${escapeHtml(fact)}</p>
+  </a>`;
+}
+
+function renderHomeFactRows(typeSummary, sourceRanks) {
+  const types = (Array.isArray(typeSummary) ? typeSummary : []).slice(0, 3);
+  const sources = (Array.isArray(sourceRanks) ? sourceRanks : []).slice(0, 3);
+  const rows = [
+    ...types.map((item) => ({ label: item.name, value: `${Number(item.count) || 0} 张` })),
+    ...sources.map((item) => ({ label: compactPageText(item.name, 22), value: `${Number(item.count) || 0} 次` })),
+  ].slice(0, 5);
+  if (!rows.length) return `<p class="muted small">等待更多归档数据。</p>`;
+  return `<dl class="todayFactRows">${rows
+    .map((row) => `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`)
+    .join("")}</dl>`;
 }
 
 function renderHomeBriefingDeck({ date, latestHref, latestArchive, cards, sourceCount, cadenceCopy }) {
@@ -7626,6 +7619,917 @@ function dailyPageCSS() {
         background:
           radial-gradient(circle at 86% 10%, color-mix(in oklch, var(--accent) 13%, transparent), transparent 13rem),
           color-mix(in oklch, white 86%, var(--accent-soft));
+      }
+    }
+    /* Homepage v2: editorial intelligence, not chart decoration. */
+    .homeShell {
+      width: min(1260px, calc(100vw - 32px));
+    }
+    .homeArtHero {
+      min-height: auto;
+      grid-template-columns: minmax(0, 0.82fr) minmax(360px, 0.64fr);
+      gap: clamp(32px, 5vw, 72px);
+      align-items: center;
+      padding: clamp(46px, 6vw, 76px) 0 clamp(42px, 5vw, 66px);
+      margin-bottom: clamp(34px, 5vw, 64px);
+      overflow: visible;
+    }
+    .homeArtHero::before {
+      inset: 0 calc(50% - 50vw) -64px;
+      background:
+        radial-gradient(circle at 78% 22%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 24rem),
+        linear-gradient(118deg, oklch(0.92 0.04 176), oklch(0.98 0.007 210) 50%, oklch(0.91 0.04 236));
+      mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
+    }
+    .homeArtHero::after {
+      display: none;
+    }
+    .heroCopyBlock h1 {
+      max-width: 9.8ch;
+      font-size: clamp(54px, 5.9vw, 82px);
+      line-height: 1.02;
+    }
+    .heroLead {
+      max-width: 50ch;
+      color: color-mix(in oklch, var(--ink) 76%, white);
+      font-size: clamp(17px, 1.3vw, 20px);
+      line-height: 1.78;
+    }
+    .homeHeroBrief {
+      min-width: 0;
+      border: 1px solid color-mix(in oklch, white 64%, var(--accent-soft));
+      border-radius: 22px;
+      background:
+        linear-gradient(145deg, color-mix(in oklch, white 86%, transparent), color-mix(in oklch, white 58%, transparent)),
+        radial-gradient(circle at 85% 16%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 16rem);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+      box-shadow: 0 18px 46px color-mix(in oklch, oklch(0.38 0.05 220) 12%, transparent);
+      backdrop-filter: blur(20px) saturate(1.18);
+      -webkit-backdrop-filter: blur(20px) saturate(1.18);
+    }
+    .heroBriefTop,
+    .todayBoardHeader {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .heroBriefTop span,
+    .heroBriefLead span,
+    .todayBoardHeader span,
+    .todayLead span,
+    .todayQueueCard span,
+    .todayFacts span {
+      width: fit-content;
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--accent-soft) 84%, white);
+      color: color-mix(in oklch, var(--accent) 74%, black);
+      padding: 0 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 780;
+    }
+    .heroBriefTop p,
+    .heroBriefLead p,
+    .todayBoardHeader p,
+    .todayLead p,
+    .todayQueueCard p,
+    .todayFacts p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.64;
+      text-wrap: pretty;
+    }
+    .heroBriefLead,
+    .todayLead,
+    .todayQueueCard,
+    .todayFacts {
+      min-width: 0;
+      border: 1px solid color-mix(in oklch, var(--line) 76%, white);
+      border-radius: 16px;
+      background: color-mix(in oklch, white 76%, transparent);
+      color: var(--ink);
+      text-decoration: none;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+    .heroBriefLead {
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+      background:
+        radial-gradient(circle at 86% 18%, color-mix(in oklch, var(--warm-soft) 60%, transparent), transparent 14rem),
+        color-mix(in oklch, white 78%, transparent);
+    }
+    .heroBriefLead strong {
+      max-width: 16ch;
+      color: var(--ink);
+      font-size: clamp(26px, 2.5vw, 36px);
+      line-height: 1.1;
+      text-wrap: balance;
+    }
+    .heroBriefLead p {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .heroBriefLead em,
+    .todayLead em,
+    .todayLead b {
+      color: var(--faint);
+      font-size: 13px;
+      font-style: normal;
+    }
+    .heroBriefFacts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .heroBriefFacts p {
+      min-width: 0;
+      margin: 0;
+      border-radius: 14px;
+      background: color-mix(in oklch, white 62%, transparent);
+      padding: 13px;
+      display: grid;
+      gap: 6px;
+    }
+    .heroBriefFacts span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+    .heroBriefFacts b {
+      min-width: 0;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.32;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .homeTodayBoard {
+      margin-bottom: clamp(18px, 2.4vw, 28px);
+    }
+    .todayBoardHeader {
+      grid-template-columns: minmax(360px, 0.46fr) minmax(0, 1fr);
+      align-items: end;
+      gap: clamp(18px, 3vw, 36px);
+      margin-bottom: 16px;
+    }
+    .todayBoardHeader span {
+      grid-column: 1;
+    }
+    .todayBoardHeader h2 {
+      grid-column: 1;
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(31px, 3.1vw, 46px);
+      line-height: 1.06;
+      text-wrap: balance;
+    }
+    .todayBoardHeader p {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      align-self: end;
+      max-width: 62ch;
+      font-size: 16px;
+    }
+    .todayBoardGrid {
+      display: grid;
+      grid-template-columns: minmax(360px, 1.1fr) minmax(260px, 0.72fr) minmax(270px, 0.68fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .todayLead {
+      min-height: 332px;
+      padding: 24px;
+      display: grid;
+      align-content: end;
+      gap: 13px;
+      background:
+        radial-gradient(circle at 88% 15%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 16rem),
+        linear-gradient(145deg, color-mix(in oklch, white 84%, transparent), color-mix(in oklch, white 58%, transparent));
+      box-shadow: var(--shadow-soft);
+    }
+    .todayLead strong {
+      color: var(--ink);
+      font-size: clamp(28px, 3vw, 44px);
+      line-height: 1.08;
+      text-wrap: balance;
+    }
+    .todayLead p,
+    .todayQueueCard p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .todayLead p {
+      -webkit-line-clamp: 3;
+    }
+    .todayLead footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 14px;
+      border-top: 1px solid color-mix(in oklch, var(--line) 72%, white);
+    }
+    .todayLead b {
+      color: var(--ink);
+      font-weight: 760;
+    }
+    .todayQueue {
+      display: grid;
+      gap: 10px;
+    }
+    .todayQueueCard {
+      min-height: 104px;
+      padding: 14px;
+      display: grid;
+      gap: 7px;
+      align-content: start;
+    }
+    .todayQueueCard strong {
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.36;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .todayQueueCard p {
+      -webkit-line-clamp: 2;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .todayFacts {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      background: color-mix(in oklch, white 72%, transparent);
+    }
+    .todayFacts > div {
+      display: grid;
+      gap: 10px;
+    }
+    .todayFacts strong {
+      color: var(--ink);
+      font-size: clamp(20px, 1.8vw, 28px);
+      line-height: 1.16;
+      text-wrap: balance;
+    }
+    .todayFactRows {
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .todayFactRows div {
+      min-width: 0;
+      min-height: 40px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border-radius: 12px;
+      background: color-mix(in oklch, white 66%, transparent);
+      padding: 0 12px;
+    }
+    .todayFactRows dt,
+    .todayFactRows dd {
+      min-width: 0;
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 720;
+    }
+    .todayFactRows dt {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .todayFactRows dd {
+      color: var(--accent-ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .heroBriefLead:hover,
+    .heroBriefLead:focus-visible,
+    .todayLead:hover,
+    .todayLead:focus-visible,
+    .todayQueueCard:hover,
+    .todayQueueCard:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent-line);
+      background:
+        radial-gradient(circle at 88% 12%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 13rem),
+        color-mix(in oklch, white 84%, var(--accent-soft));
+      box-shadow: var(--focus-ring), var(--focus-shadow);
+      text-decoration: none;
+    }
+    .heroBriefLead:hover strong,
+    .heroBriefLead:focus-visible strong,
+    .todayLead:hover strong,
+    .todayLead:focus-visible strong,
+    .todayQueueCard:hover strong,
+    .todayQueueCard:focus-visible strong {
+      color: var(--accent-ink);
+    }
+    .homeRouteGallery {
+      margin-top: clamp(22px, 3.2vw, 38px);
+    }
+    @media (max-width: 1040px) {
+      .homeArtHero {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 32px 0;
+        margin-bottom: 28px;
+      }
+      .homeHeroBrief {
+        max-width: 100%;
+      }
+      .homeHeroBrief .heroBriefLead {
+        display: none;
+      }
+      .todayBoardHeader,
+      .todayBoardGrid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .todayBoardHeader p {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      .todayLead {
+        min-height: 270px;
+      }
+    }
+    @media (max-width: 760px) {
+      .homeArtHero {
+        padding: 18px 0 20px !important;
+        margin-bottom: 18px;
+      }
+      .homeArtHero::before {
+        inset: 0 calc(50% - 50vw) -36px;
+      }
+      .heroCopyBlock h1 {
+        font-size: clamp(30px, 9vw, 38px) !important;
+        line-height: 1.08 !important;
+      }
+      .heroLead {
+        -webkit-line-clamp: 4;
+      }
+      .homeHeroBrief {
+        padding: 14px;
+        border-radius: 18px;
+        gap: 10px;
+      }
+      .heroBriefLead {
+        padding: 14px;
+      }
+      .heroBriefLead strong {
+        max-width: 100%;
+        font-size: clamp(22px, 6.4vw, 28px);
+      }
+      .heroBriefFacts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .todayBoardHeader {
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .todayBoardHeader h2 {
+        font-size: clamp(26px, 7.4vw, 34px);
+      }
+      .todayBoardHeader p {
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .todayBoardGrid {
+        gap: 10px;
+      }
+      .todayLead {
+        min-height: 218px;
+        padding: 16px;
+        gap: 10px;
+      }
+      .todayLead strong {
+        font-size: clamp(23px, 6.4vw, 29px);
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .todayLead p {
+        -webkit-line-clamp: 2;
+      }
+      .todayQueueCard:nth-child(n+3) {
+        display: none;
+      }
+      .todayFacts {
+        padding: 14px;
+      }
+      .todayFacts strong {
+        font-size: 19px;
+      }
+      .todayFactRows div {
+        min-height: 38px;
+      }
+      .homeRouteGallery {
+        margin-top: 18px;
+      }
+    }
+    /* Mobile app redesign: phone layouts are native content flows, not desktop reductions. */
+    @media (max-width: 760px) {
+      html {
+        background: oklch(0.985 0.004 215);
+      }
+      body {
+        min-width: 0;
+        overflow-x: clip;
+        background:
+          linear-gradient(180deg, oklch(0.986 0.004 215), oklch(0.972 0.012 195) 52%, oklch(0.988 0.004 220));
+      }
+      .shell,
+      .homeShell {
+        width: 100%;
+        max-width: 430px;
+        padding: 12px 14px calc(92px + env(safe-area-inset-bottom, 0px));
+      }
+      .siteNav {
+        position: sticky;
+        top: 8px;
+        z-index: calc(var(--sticky) + 3);
+        animation: none !important;
+        transform: none !important;
+        will-change: auto;
+        display: flex !important;
+        min-height: 52px !important;
+        margin: 0 0 14px;
+        padding: 8px 10px !important;
+        border-radius: 16px;
+        justify-content: space-between;
+        background: color-mix(in oklch, white 90%, transparent);
+        box-shadow: 0 8px 18px color-mix(in oklch, oklch(0.44 0.05 220) 10%, transparent);
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      .brandMark {
+        min-height: 36px;
+        padding: 0 4px;
+        font-size: 16px;
+      }
+      .navStatus {
+        display: inline-flex !important;
+        min-height: 36px;
+        max-width: 138px;
+        padding: 0 10px;
+        font-size: 11px;
+      }
+      .navLinks {
+        position: fixed;
+        top: auto !important;
+        left: 12px;
+        right: 12px;
+        bottom: 12px !important;
+        z-index: calc(var(--sticky) + 4);
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+        width: auto;
+        padding: 6px;
+        border: 1px solid color-mix(in oklch, var(--line) 72%, white);
+        border-radius: 18px;
+        background: color-mix(in oklch, white 90%, transparent);
+        box-shadow: 0 12px 30px color-mix(in oklch, oklch(0.42 0.05 220) 16%, transparent);
+        backdrop-filter: blur(22px) saturate(1.25);
+        -webkit-backdrop-filter: blur(22px) saturate(1.25);
+      }
+      @supports (bottom: env(safe-area-inset-bottom)) {
+        .navLinks {
+          bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+        }
+      }
+      .navLinks a {
+        min-height: 44px;
+        min-width: 0;
+        padding: 0 4px !important;
+        justify-content: center;
+        border-radius: 13px;
+        font-size: 12px;
+        line-height: 1;
+      }
+      .navLinks a.active {
+        color: var(--accent-ink);
+        background: color-mix(in oklch, var(--accent-soft) 86%, white);
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 20%, transparent);
+      }
+      .homeArtHero,
+      .featureHero {
+        margin-inline: -14px;
+        padding: 18px 18px 20px !important;
+        border-radius: 0 0 24px 24px;
+        background:
+          radial-gradient(circle at 92% 8%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 13rem),
+          linear-gradient(145deg, oklch(0.928 0.034 184), oklch(0.964 0.012 218) 58%, oklch(0.922 0.034 228));
+      }
+      .homeArtHero::before,
+      .homeArtHero::after,
+      .featureHero::before {
+        display: none !important;
+      }
+      .heroCopyBlock,
+      .featureHeroCopy {
+        min-width: 0;
+        display: grid;
+        gap: 10px;
+      }
+      .heroKicker,
+      .sectionLabel {
+        margin: 0;
+        color: var(--accent-ink);
+        font-size: 13px;
+        font-weight: 780;
+      }
+      .heroCopyBlock h1,
+      .featureHero h1 {
+        max-width: 11.5ch !important;
+        font-size: clamp(29px, 8.2vw, 36px) !important;
+        line-height: 1.08 !important;
+        letter-spacing: 0;
+      }
+      .heroHeadline span {
+        display: block;
+      }
+      .heroHeadline span + span::before {
+        content: none;
+      }
+      .heroLead,
+      .featureHero .muted {
+        display: block;
+        max-width: 34ch !important;
+        margin: 0 !important;
+        color: color-mix(in oklch, var(--ink) 72%, white);
+        font-size: 15.5px !important;
+        line-height: 1.7 !important;
+        overflow: visible;
+      }
+      .heroActionBar {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+        margin-top: 6px !important;
+      }
+      .heroActionBar .primaryLink,
+      .heroActionBar .navButton {
+        min-height: 46px !important;
+        border-radius: 999px;
+        font-size: 14px;
+      }
+      .heroActionBar .navButton:nth-of-type(n+2),
+      .heroActionBar a:nth-child(n+3) {
+        display: none !important;
+      }
+      .heroCapsules,
+      .stats {
+        margin-top: 4px;
+        gap: 7px !important;
+      }
+      .heroCapsules span,
+      .stats span {
+        min-height: 32px !important;
+        padding: 0 10px !important;
+        font-size: 12px;
+      }
+      .homeHeroBrief,
+      .heroPortalScene,
+      .featureScene {
+        display: none !important;
+      }
+      .homeTodayBoard {
+        margin: 18px 0 0;
+        display: grid;
+        gap: 12px;
+      }
+      .todayBoardHeader {
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+        padding: 0 2px;
+      }
+      .todayBoardHeader span,
+      .todayLead span,
+      .todayQueueCard span,
+      .routePane span,
+      .readOrderItem span,
+      .card .type,
+      .dateBadge {
+        width: fit-content;
+        min-height: 28px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0 9px;
+        font-size: 12px;
+        font-weight: 780;
+        line-height: 1.25;
+      }
+      .todayBoardHeader h2 {
+        max-width: 100%;
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.12;
+        text-wrap: balance;
+      }
+      .todayBoardHeader p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14.5px;
+        line-height: 1.62;
+      }
+      .todayBoardGrid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px;
+        align-items: stretch;
+      }
+      .todayLead,
+      .todayQueueCard,
+      .todayFacts,
+      .routePane,
+      .dailyReadOrder,
+      .finderPanel,
+      .card,
+      .reviewGlassBlock,
+      .reviewPanel,
+      .visualTile {
+        min-width: 0 !important;
+        width: 100%;
+        border-radius: 14px !important;
+        box-shadow: none !important;
+      }
+      .todayLead {
+        min-height: auto !important;
+        padding: 16px !important;
+        display: grid;
+        gap: 10px;
+        background:
+          radial-gradient(circle at 90% 12%, color-mix(in oklch, var(--accent) 8%, transparent), transparent 12rem),
+          color-mix(in oklch, white 82%, transparent);
+      }
+      .todayLead strong {
+        max-width: 100% !important;
+        color: var(--ink);
+        font-size: 22px !important;
+        line-height: 1.18 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word;
+        word-break: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .todayLead p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14.5px;
+        line-height: 1.6;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .todayLead footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 10px;
+        border-top: 1px solid color-mix(in oklch, var(--line) 74%, white);
+      }
+      .todayLead footer * {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .todayQueue {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 9px;
+      }
+      .todayQueueCard {
+        min-height: 96px;
+        padding: 13px 14px !important;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 7px;
+        background: color-mix(in oklch, white 82%, transparent);
+      }
+      .todayQueueCard strong {
+        max-width: 100%;
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1.38;
+        white-space: normal !important;
+        overflow-wrap: break-word;
+        word-break: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .todayQueueCard p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13.5px;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .todayFacts {
+        display: none !important;
+      }
+      .homeRouteGallery {
+        margin-top: 16px;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+      }
+      .routePane {
+        min-height: 102px !important;
+        padding: 14px !important;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        background: color-mix(in oklch, white 82%, transparent);
+      }
+      .routePane strong {
+        font-size: 17px;
+        line-height: 1.25;
+      }
+      .routePane p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.52;
+      }
+      .pageAtlas,
+      .rolePanel,
+      .reviewIdentity,
+      .libraryAtlas,
+      .dailyAtlas,
+      .homeBriefingDeck,
+      .homeVisualSummary,
+      .homeChannelMatrix,
+      .homeDailyRiver,
+      .homeContentRibbon,
+      .homeSignalBoard,
+      .homeFutureRibbon {
+        display: none !important;
+      }
+      .finderPanel {
+        position: static !important;
+        margin: 12px 0;
+        padding: 12px !important;
+        background: color-mix(in oklch, white 84%, transparent);
+      }
+      .finderTop,
+      .toolbar {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 8px !important;
+      }
+      #sourceSelect,
+      #startDate,
+      #endDate {
+        display: none !important;
+      }
+      .search input,
+      select,
+      input[type="date"],
+      #clearFilters {
+        min-height: 46px;
+        height: 46px;
+        border-radius: 14px;
+        font-size: 15px;
+      }
+      .dateRail {
+        gap: 7px;
+        padding: 8px 46px 2px 0;
+      }
+      .dateRail button,
+      .segments button,
+      .rangeSwitch a {
+        min-height: 40px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+      .resultLine {
+        margin: 8px 2px 0;
+      }
+      .grid,
+      .reviewSampleGrid,
+      .readOrderList {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+      }
+      .card {
+        min-height: auto !important;
+        padding: 14px !important;
+        background: color-mix(in oklch, white 86%, transparent);
+      }
+      .card .meta {
+        gap: 6px;
+      }
+      .card h2 {
+        max-width: 100% !important;
+        font-size: 16.5px !important;
+        line-height: 1.4 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word;
+        word-break: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .card .topics,
+      .card .fact {
+        max-width: 100% !important;
+        font-size: 14px;
+        line-height: 1.55;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .card .topics {
+        -webkit-line-clamp: 1;
+      }
+      .card .fact {
+        -webkit-line-clamp: 3;
+      }
+      .card dl {
+        display: none !important;
+      }
+      .card footer {
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .dailyReadOrder {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+        margin: 14px 0;
+        padding: 14px !important;
+        background: color-mix(in oklch, white 84%, transparent);
+      }
+      .dailyReadOrder > div:first-child {
+        gap: 8px;
+      }
+      .dailyReadOrder h2 {
+        font-size: 23px !important;
+        line-height: 1.18;
+      }
+      .dailyReadOrder > div:first-child p {
+        display: none !important;
+      }
+      .readOrderItem {
+        min-height: auto !important;
+        padding: 13px !important;
+        border-radius: 12px !important;
+      }
+      .readOrderItem strong {
+        max-width: 100%;
+        font-size: 16px;
+        line-height: 1.38;
+        overflow-wrap: break-word;
+        word-break: normal;
+      }
+      .reviewDashboard,
+      .reviewTimeline,
+      .reviewSamples,
+      .reviewPanel {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 10px !important;
+      }
+      .reviewGlassBlock,
+      .reviewPanel {
+        padding: 14px !important;
+      }
+      .bars,
+      .miniBars,
+      .trendArea {
+        max-width: 100%;
+        overflow: hidden;
+      }
+      :where(.todayLead, .todayQueueCard, .routePane, .card, .readOrderItem, .reviewGlassBlock, .finderPanel, .dailyReadOrder) {
+        border-color: color-mix(in oklch, var(--line) 78%, white) !important;
       }
     }
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
