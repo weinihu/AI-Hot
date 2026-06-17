@@ -32,6 +32,10 @@ const BITABLE_FIELD_DEFINITIONS = [
 ];
 
 export async function syncFeishuBitable(env, items, meta) {
+  const dateKey = formatDateKey(meta.startedAt);
+  const archiveKey = dailyArchiveKVKey(dateKey);
+  await putDailyArchive(env, archiveKey, items, meta);
+
   const hasConfig = env.FEISHU_APP_ID && env.FEISHU_APP_SECRET && env.FEISHU_BITABLE_APP_TOKEN;
 
   if (!hasConfig) {
@@ -39,6 +43,8 @@ export async function syncFeishuBitable(env, items, meta) {
       ok: false,
       skipped: true,
       reason: "Feishu Bitable is not configured.",
+      archived: items.length,
+      archiveKey,
       url: env.FEISHU_BITABLE_URL || "",
     };
   }
@@ -60,10 +66,6 @@ export async function syncFeishuBitable(env, items, meta) {
     };
   }
   const viewEnsureResult = await ensureKnowledgeViews(env, tenantAccessToken, target.tableId);
-
-  const dateKey = formatDateKey(meta.startedAt);
-  const archiveKey = dailyArchiveKVKey(dateKey);
-  await putDailyArchive(env, archiveKey, items, meta);
 
   const shouldWriteDailyRow = await shouldWriteDailyIndexRow(env, dateKey, target.tableId);
   const records = shouldWriteDailyRow

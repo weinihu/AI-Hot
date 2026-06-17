@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import {
+import worker, {
   buildDigest,
   buildDailyBitableFields,
   buildBitableFieldDefinitions,
@@ -13,6 +13,7 @@ import {
   millisecondsUntilBeijingTime,
   openAIChatEndpointCandidates,
   openAIEndpointCandidates,
+  publicHtmlCacheUrl,
   rankInfluentialItems,
   repairMojibake,
   selectScoredItems,
@@ -20,6 +21,27 @@ import {
   toOriginalSiteItem,
   validateAIHotResponse,
 } from "../src/index.js";
+
+function createTrackedKV(values = {}) {
+  const ops = { get: [], list: [], put: [], delete: [] };
+  return {
+    ops,
+    async get(key) {
+      ops.get.push(key);
+      return Object.hasOwn(values, key) ? values[key] : null;
+    },
+    async list(options = {}) {
+      ops.list.push(options);
+      return { keys: [], list_complete: true };
+    },
+    async put(key, value, options = {}) {
+      ops.put.push({ key, value, options });
+    },
+    async delete(key) {
+      ops.delete.push(key);
+    },
+  };
+}
 
 test("UTF-8 Chinese content remains readable in docs, source, and assertions", () => {
   const expectations = [
@@ -57,6 +79,165 @@ test("UTF-8 Chinese content remains readable in docs, source, and assertions", (
       assert.ok(!contents[index].includes(fragment), `${file} should not contain mojibake fragment: ${fragment}`);
     }
   }
+});
+
+test("public pages do not rebuild archive snapshots on visitor requests", async () => {
+  const kv = createTrackedKV();
+  const response = await worker.fetch(new Request("https://example.com/"), { AIHOT_KV: kv }, { waitUntil() {} });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(kv.ops.get, ["site_snapshot:v1"]);
+  assert.equal(kv.ops.list.length, 0);
+  assert.equal(kv.ops.put.length, 0);
+  assert.equal(kv.ops.delete.length, 0);
+});
+
+test("unknown paths and unsupported public methods do not read KV", async () => {
+  const unknownKV = createTrackedKV();
+  const unknownResponse = await worker.fetch(
+    new Request("https://example.com/wp-login.php?random=1"),
+    { AIHOT_KV: unknownKV },
+    { waitUntil() {} },
+  );
+
+  assert.equal(unknownResponse.status, 404);
+  assert.deepEqual(unknownKV.ops, { get: [], list: [], put: [], delete: [] });
+
+  const postKV = createTrackedKV();
+  const postResponse = await worker.fetch(
+    new Request("https://example.com/library", { method: "POST" }),
+    { AIHOT_KV: postKV },
+    { waitUntil() {} },
+  );
+
+  assert.equal(postResponse.status, 405);
+  assert.deepEqual(postKV.ops, { get: [], list: [], put: [], delete: [] });
+});
+
+test("public original feed proxies upstream pages without reading KV", async () => {
+  const originalFetch = globalThis.fetch;
+  const upstreamUrls = [];
+  globalThis.fetch = async (url) => {
+    upstreamUrls.push(new URL(url));
+    if (upstreamUrls.length === 1) {
+      return Response.json({
+        items: [
+          {
+            id: "one",
+            titleZh: "Older high score upstream item",
+            url: "https://example.com/one",
+            source: { name: "AI HOT Feed" },
+            publishedAt: "2026-06-15T00:00:00.000Z",
+            summaryZh: "Older item from the current public feed API.",
+            finalScore: 90,
+            aiTags: [{ tag: "产品更新" }],
+          },
+        ],
+        hasNext: true,
+        nextCursor: { at: 1781539200000, id: "one" },
+      });
+    }
+    return Response.json({
+      items: [
+        {
+          id: "two",
+          titleZh: "Newer lower score upstream item",
+          url: "https://example.com/two",
+          source: { name: "AI HOT Feed" },
+          publishedAt: "2026-06-15T01:00:00.000Z",
+          summaryZh: "Newer item from the current public feed API.",
+          finalScore: 70,
+          aiTags: [{ tag: "模型" }],
+        },
+      ],
+      hasNext: false,
+    });
+  };
+
+  try {
+    const kv = createTrackedKV();
+    const response = await worker.fetch(
+      new Request("https://example.com/api/original-feed?days=14&take=10&maxPages=2"),
+      { AIHOT_KV: kv },
+      { waitUntil() {} },
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.match(response.headers.get("CDN-Cache-Control"), /max-age=300/);
+    assert.deepEqual(kv.ops, { get: [], list: [], put: [], delete: [] });
+    assert.equal(body.ok, true);
+    assert.equal(body.count, 2);
+    assert.deepEqual(body.items.map((item) => item.id), ["one", "two"]);
+    assert.equal(body.items[0].title, "Older high score upstream item");
+    assert.equal(body.items[0].source, "AI HOT Feed");
+    assert.equal(body.items[0].rank, 1);
+    assert.equal(upstreamUrls.length, 2);
+    assert.equal(upstreamUrls[0].pathname, "/api/public/feed");
+    assert.equal(upstreamUrls[0].searchParams.get("mode"), "selected");
+    assert.equal(upstreamUrls[0].searchParams.has("cursorAt"), false);
+    assert.equal(upstreamUrls[1].searchParams.get("cursorAt"), "1781539200000");
+    assert.equal(upstreamUrls[1].searchParams.get("cursorId"), "one");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("public html cache keys ignore visitor-only tracking and library filter params", () => {
+  const libraryA = publicHtmlCacheUrl("https://example.com/library?q=codex&type=工具&source=x&utm_source=mail");
+  const libraryB = publicHtmlCacheUrl("https://example.com/library?q=random&archiveDate=2026-06-07");
+  assert.equal(libraryA, libraryB);
+  assert.equal(new URL(libraryA).searchParams.has("q"), false);
+
+  const daily = new URL(publicHtmlCacheUrl("https://example.com/daily?date=2026-06-07&utm_source=mail"));
+  assert.equal(daily.searchParams.get("date"), "2026-06-07");
+  assert.equal(daily.searchParams.has("utm_source"), false);
+
+  const review = new URL(publicHtmlCacheUrl("https://example.com/review?days=30&noise=1"));
+  assert.equal(review.searchParams.get("days"), "30");
+  assert.equal(review.searchParams.has("noise"), false);
+});
+
+test("admin write endpoints require POST and bearer authorization only", async () => {
+  const env = { ADMIN_TOKEN: "secret" };
+  const ctx = { waitUntil() {} };
+  const writePaths = [
+    "/run-now",
+    "/archive-now",
+    "/compact-legacy",
+    "/cleanup-index-views",
+    "/reset-index-library",
+    "/rebuild-site-snapshot",
+  ];
+
+  for (const path of writePaths) {
+    const response = await worker.fetch(
+      new Request(`https://example.com${path}?token=secret`, {
+        headers: { Authorization: "Bearer secret" },
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(response.status, 405, `${path} should reject GET`);
+    assert.equal(response.headers.get("Allow"), "POST");
+  }
+
+  const queryOnlyWrite = await worker.fetch(
+    new Request("https://example.com/run-now?token=secret", { method: "POST" }),
+    env,
+    ctx,
+  );
+  assert.equal(queryOnlyWrite.status, 401);
+
+  const kv = createTrackedKV();
+  const queryOnlyRead = await worker.fetch(
+    new Request("https://example.com/api/latest?token=secret"),
+    { ...env, AIHOT_KV: kv },
+    ctx,
+  );
+  assert.equal(queryOnlyRead.status, 401);
+  assert.deepEqual(kv.ops, { get: [], list: [], put: [], delete: [] });
 });
 
 test("rankInfluentialItems favors actionable official platform changes over generic commentary", () => {
@@ -238,6 +419,72 @@ test("original-site items preserve upstream score and minScore selection order",
   assert.deepEqual(selected.map((item) => item.id), ["high"]);
 });
 
+test("daily report and archive keep fetched upstream items even when scores are low", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/api/public/feed" && parsed.searchParams.get("category") === "paper") {
+      return Response.json({ items: [], hasNext: false });
+    }
+    return Response.json({
+      items: [
+        {
+          id: "low",
+          titleZh: "低分但仍需归档的原站条目",
+          url: "https://example.com/low",
+          source: { name: "AI HOT Feed" },
+          publishedAt: "2026-06-17T09:00:00.000Z",
+          summaryZh: "这条分数较低，但仍属于原站 24 小时内容，应该进入日报和知识库归档。",
+          finalScore: 42,
+          aiTags: [{ tag: "行业" }],
+        },
+        {
+          id: "high",
+          titleZh: "高分推送条目",
+          url: "https://example.com/high",
+          source: { name: "AI HOT Feed" },
+          publishedAt: "2026-06-17T10:00:00.000Z",
+          summaryZh: "这条会进入飞书精选，也会进入知识库归档。",
+          finalScore: 88,
+          aiTags: [{ tag: "模型" }],
+        },
+      ],
+      hasNext: false,
+    });
+  };
+
+  try {
+    const kv = createTrackedKV();
+    const response = await worker.fetch(
+      new Request("https://example.com/archive-now", {
+        method: "POST",
+        headers: { Authorization: "Bearer secret" },
+      }),
+      {
+        ADMIN_TOKEN: "secret",
+        AIHOT_KV: kv,
+        AIHOT_MIN_SCORE: "60",
+        AIHOT_MAX_ITEMS: "1",
+      },
+      { waitUntil() {} },
+    );
+    const body = await response.json();
+    const archiveWrite = kv.ops.put.find((item) => item.key.startsWith("archive:"));
+    const archive = JSON.parse(archiveWrite.value);
+
+    assert.equal(response.status, 200);
+    assert.equal(body.selected, 2);
+    assert.equal(body.bitable.archived, 2);
+    assert.match(body.digest, /低分但仍需归档的原站条目/);
+    assert.deepEqual(
+      archive.cards.map((card) => card.id).sort(),
+      ["high", "low"],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("repairMojibake repairs Latin-1-decoded UTF-8 archive text", () => {
   const original = "技巧与观点";
   const broken = String.fromCharCode(...new TextEncoder().encode(original));
@@ -381,12 +628,13 @@ test("fetchAIHotItems retries transient upstream 5xx failures", async () => {
       items: [
         {
           id: "paper",
-          title: "Reliable paper feed",
+          titleZh: "Reliable paper feed",
           url: "https://example.com/paper",
-          source: "AI HOT",
+          source: { name: "AI HOT Feed" },
           publishedAt: "2026-05-30T00:00:00.000Z",
-          category: "paper",
-          score: 73,
+          summaryZh: "A reliable paper from the current feed API.",
+          finalScore: 73,
+          aiTags: [{ tag: "论文" }],
         },
       ],
       hasNext: false,
@@ -417,28 +665,30 @@ test("fetchAIHotItems follows AIHOT cursor pagination within maxPages", async ()
         items: [
           {
             id: "one",
-            title: "First page item",
+            titleZh: "First page item",
             url: "https://example.com/one",
-            source: "AI HOT",
+            source: { name: "AI HOT Feed" },
             publishedAt: "2026-05-30T00:00:00.000Z",
-            category: "ai-products",
-            score: 81,
+            summaryZh: "First page item from the current feed API.",
+            finalScore: 81,
+            aiTags: [{ tag: "产品更新" }],
           },
         ],
         hasNext: true,
-        nextCursor: "cursor-2",
+        nextCursor: { at: 1781539200000, id: "one" },
       });
     }
     return Response.json({
       items: [
         {
           id: "two",
-          title: "Second page item",
+          titleZh: "Second page item",
           url: "https://example.com/two",
-          source: "AI HOT",
+          source: { name: "AI HOT Feed" },
           publishedAt: "2026-05-30T01:00:00.000Z",
-          category: "ai-models",
-          score: 86,
+          summaryZh: "Second page item from the current feed API.",
+          finalScore: 86,
+          aiTags: [{ tag: "模型" }],
         },
       ],
       hasNext: false,
@@ -454,8 +704,54 @@ test("fetchAIHotItems follows AIHOT cursor pagination within maxPages", async ()
 
     assert.equal(items.length, 2);
     assert.equal(urls.length, 2);
-    assert.equal(urls[0].searchParams.has("cursor"), false);
-    assert.equal(urls[1].searchParams.get("cursor"), "cursor-2");
+    assert.equal(urls[0].pathname, "/api/public/feed");
+    assert.equal(urls[0].searchParams.has("cursorAt"), false);
+    assert.equal(urls[1].searchParams.get("cursorAt"), "1781539200000");
+    assert.equal(urls[1].searchParams.get("cursorId"), "one");
+    assert.equal(items[0].source, "AI HOT Feed");
+    assert.equal(items[1].category, "ai-models");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("fetchAIHotItems falls back to legacy items API when current feed is unavailable", async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    urls.push(parsed);
+    if (parsed.pathname === "/api/public/feed") {
+      return new Response("missing feed", { status: 404, statusText: "Not Found" });
+    }
+    return Response.json({
+      items: [
+        {
+          id: "legacy",
+          title: "Legacy selected item",
+          url: "https://example.com/legacy",
+          source: "AI HOT Legacy",
+          publishedAt: "2026-05-30T00:00:00.000Z",
+          category: "industry",
+          score: 71,
+        },
+      ],
+      hasNext: false,
+    });
+  };
+
+  try {
+    const items = await fetchAIHotItems({
+      since: "2026-05-30T00:00:00.000Z",
+      take: 10,
+      maxPages: 2,
+    });
+
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, "Legacy selected item");
+    assert.deepEqual(urls.map((url) => url.pathname), ["/api/public/feed", "/api/public/items"]);
+    assert.equal(urls[1].searchParams.get("since"), "2026-05-30T00:00:00.000Z");
+    assert.equal(urls[1].searchParams.get("take"), "10");
   } finally {
     globalThis.fetch = originalFetch;
   }

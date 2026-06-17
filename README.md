@@ -12,8 +12,8 @@
 ## 工作流程
 
 1. Cloudflare Cron 每天北京时间 21:29 触发。
-2. Worker 抓取 AI HOT 原站公开接口。
-3. Worker 选出当日资讯和论文候选。
+2. Worker 抓取 AI HOT 原站公开接口，默认最多翻 6 页，避免原站当天更新量变大时漏掉内容。
+3. Worker 生成飞书日报时保留原站 24 小时条目全集，不再按分数阈值截断；论文区会包含原站当日论文，并额外补充近期高价值论文。
 4. Worker 调用配置的大模型接口生成简洁总结；失败时会明确标记，不静默伪装。
 5. Worker 写入 Cloudflare KV：`archive:YYYY-MM-DD` 保存当天完整知识卡片。
 6. Worker 写入飞书多维表格：一天只写一行日报索引。
@@ -91,16 +91,20 @@ https://aihot.agflow.cc/daily?date=YYYY-MM-DD
 
 ## 管理接口
 
-所有管理接口都需要 `ADMIN_TOKEN`。
+除公开页面和 `/health` 外，管理接口都需要 `Authorization: Bearer <ADMIN_TOKEN>`；会触发写入或外部调用的管理接口只接受 `POST`。
 
 ```text
 GET /health
-GET /run-now
-GET /archive-now
-GET /reset-index-library
+GET /debug-config
 GET /api/latest
 GET /api/index-status
 GET /api/archive?date=YYYY-MM-DD
+POST /run-now
+POST /archive-now
+POST /compact-legacy
+POST /cleanup-index-views
+POST /reset-index-library
+POST /rebuild-site-snapshot
 GET /library
 GET /review
 GET /daily?date=YYYY-MM-DD
@@ -108,7 +112,10 @@ GET /daily?date=YYYY-MM-DD
 
 - `/run-now`：立刻抓取并推送到飞书群。
 - `/archive-now`：只归档和写索引，不推送飞书群。
+- `/compact-legacy`：压缩迁移旧多维表格数据到日报索引库。
+- `/cleanup-index-views`：清理日报索引库里的旧视图。
 - `/reset-index-library`：清理旧表、旧字段、旧记录，并从 KV 重建日报索引库。
+- `/rebuild-site-snapshot`：从 KV 归档重建公开页面快照。
 - `/api/index-status`：查看索引库当前字段、记录数和入口。
 - `/api/archive`：读取某天完整归档。
 - `/library`：打开跨日期知识库入口。

@@ -16,7 +16,10 @@ param(
   [string]$FeishuBitableAppToken = $env:FEISHU_BITABLE_APP_TOKEN,
   [string]$FeishuBitableTableId = $env:FEISHU_BITABLE_TABLE_ID,
   [string]$FeishuBitableUrl = $env:FEISHU_BITABLE_URL,
-  [string]$PublicBaseURL = $env:PUBLIC_BASE_URL
+  [string]$PublicBaseURL = $env:PUBLIC_BASE_URL,
+  [string]$AIHotMaxPages = $(if ($env:AIHOT_MAX_PAGES) { $env:AIHOT_MAX_PAGES } else { "6" }),
+  [string]$AIHotPaperMaxPages = $(if ($env:AIHOT_PAPER_MAX_PAGES) { $env:AIHOT_PAPER_MAX_PAGES } else { "6" }),
+  [string]$AIHotBitableMaxRecords = $(if ($env:AIHOT_BITABLE_MAX_RECORDS) { $env:AIHOT_BITABLE_MAX_RECORDS } else { "120" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -139,6 +142,9 @@ Put-WorkerSecret -Name "FEISHU_BITABLE_APP_TOKEN" -Text $FeishuBitableAppToken
 Put-WorkerSecret -Name "FEISHU_BITABLE_TABLE_ID" -Text $FeishuBitableTableId
 Put-WorkerSecret -Name "FEISHU_BITABLE_URL" -Text $FeishuBitableUrl
 Put-WorkerSecret -Name "PUBLIC_BASE_URL" -Text $PublicBaseURL
+Put-WorkerSecret -Name "AIHOT_MAX_PAGES" -Text $AIHotMaxPages
+Put-WorkerSecret -Name "AIHOT_PAPER_MAX_PAGES" -Text $AIHotPaperMaxPages
+Put-WorkerSecret -Name "AIHOT_BITABLE_MAX_RECORDS" -Text $AIHotBitableMaxRecords
 
 Invoke-CfJson -Method Put -Uri "$base/workers/scripts/$ScriptName/schedules" -Body @(@{ cron = $Cron }) | Out-Null
 
